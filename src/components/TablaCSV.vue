@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useDataStore } from "../stores/data.js";
+import { invoke } from "@tauri-apps/api/core";
 
 const estadoData = useDataStore();
 const columnas = computed(() => estadoData.columnas);
@@ -17,6 +18,26 @@ function setColor(columnName) {
   )[0];
   return typeDict[option.tipo];
 }
+
+onMounted(async () => {
+  const prueba = await invoke("fetch_rows");
+  console.log("La prueba", prueba);
+  /*const options = {
+    root: null,
+    rootMargin: "0px",
+    scrollMargin: "0px",
+    threshold: 1.0,
+  };
+
+  const fetchNewData = function (entries, observer) {
+    console.log("Se solicita nueva información");
+    entries.forEach((d) => console.log(d));
+  };
+
+  const observer = new IntersectionObserver(fetchNewData, options);
+  const target = document.querySelector(".fila-Natación");
+  observer.observe(target);*/
+});
 </script>
 <template>
   <div>
@@ -41,11 +62,11 @@ function setColor(columnName) {
             </th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="fila in filas">
+        <!-- <tbody>
+          <tr v-for="fila in filas" :class="`fila-${fila[0]}`">
             <td v-for="valor in fila">{{ valor }}</td>
           </tr>
-        </tbody>
+        </tbody> -->
       </table>
     </div>
   </div>
@@ -53,6 +74,6 @@ function setColor(columnName) {
 <style lang="scss" scoped>
 .contenedor-tabla {
   max-width: 95%;
-  max-height: 80vh;
+  max-height: 60vh;
 }
 </style>

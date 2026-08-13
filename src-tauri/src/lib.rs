@@ -8,6 +8,10 @@ use std::collections::{BTreeMap, BTreeSet,};
 use std::{ fs::File};
 use std::io::{Read,BufReader};
 use serde::{Serialize};
+use std::sync::Mutex;
+use tauri::State;
+use tauri::Manager;
+
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -20,10 +24,18 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, leer_csv])
+         .manage(ContenedorDatos { 
+            filas_completas: Mutex::new(Vec::new()),
+        })
+        .invoke_handler(tauri::generate_handler![greet, leer_csv, fetch_rows])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+pub struct ContenedorDatos {
+    pub filas_completas: Mutex<Vec<Vec<String>>>,
+}
+
 #[derive(Serialize, Debug)]
 pub struct CaracterCorrupto {
     pub caracter: String,
@@ -77,12 +89,11 @@ pub struct ReporteCsv {
     pub caracteres_corruptos: Vec<CaracterCorrupto>,
     pub columnas: Vec<String>,
     pub esquema_columnas: Vec<EsquemaColumna>,
-    pub filas: Vec<Vec<String>>,
     pub total_filas: usize,
 
 }
 #[tauri::command]
-fn leer_csv(ruta_front: String) -> Result<ReporteCsv, String>{
+fn leer_csv(ruta_front: String, state: tauri::State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     // Esta fucnión debe devolver un objeto con las siguientes keys:
     // caracteres_corruptos, encoding detectado, requiere_conversion, columnas, total_filas, esquema
     // Confirmar que existe la ruta
@@ -149,7 +160,8 @@ fn leer_csv(ruta_front: String) -> Result<ReporteCsv, String>{
     //let total_filas = rdr.records().count();
     // Para evitar crear dos iteradores para obtener las filas, 
     // primero creamos un vector con las filas y luego obtenemos su longitud
-    let mut filas = Vec::new();
+    let mut filas = state.filas_completas.lock().unwrap();
+    //let mut filas = Vec::new();
     let filas_sr: Vec<StringRecord> = rdr.records().map(|record| record.unwrap()).collect();
     let total_filas = filas_sr.len();
 
@@ -159,6 +171,9 @@ fn leer_csv(ruta_front: String) -> Result<ReporteCsv, String>{
         let opt:Vec<String>= fila.into_iter().map(|x| x.to_string()).collect();
         filas.push(opt);
     }
+    println!("Las filas del estado global: {:?}", state.filas_completas);
+    /*let slice_filas = &filas[0..10];
+    println!("Las filas recortadas: {:?}", slice_filas);*/
 
     // Ahora vamos a contruir el equema de las columnas que nos indicará 
     //el nombre de cada columna, su tipo y sus valores
@@ -172,7 +187,7 @@ fn leer_csv(ruta_front: String) -> Result<ReporteCsv, String>{
         esquema_columnas.push(EsquemaColumna{nombre: col.clone(), tipo: tipo_col.to_string(), col_vals: contenido_col})
     }
 
-    Ok(ReporteCsv{nombre_encoding, requiere_conversion, caracteres_corruptos, columnas, esquema_columnas, filas, total_filas, })
+    Ok(ReporteCsv{nombre_encoding, requiere_conversion, caracteres_corruptos, columnas, esquema_columnas, total_filas, })
 
 }
 
@@ -200,4 +215,16 @@ fn parsear_columna(contenido_columna: &Vec<String>)->Result<String, Error>{
         }
     }
     Ok(tipo)
+}
+
+#[tauri::command]
+fn fetch_rows(state: tauri::State<'_, ContenedorDatos>) -> Vec<Vec<String>>{
+    let rows = state.filas_completas.lock().unwrap();
+    // Aquí no me queda muy claro por qué tengo que pedir prestada la variable
+    let slice_rows = &rows[0..10];
+    let mut owned_slice: Vec<Vec<String>> = Vec::new();
+    for row in slice_rows{
+        owned_slice.push(row.clone());
+    }
+    owned_slice
 }

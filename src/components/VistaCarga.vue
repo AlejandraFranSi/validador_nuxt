@@ -38,7 +38,7 @@ onMounted(() => {
       );
       estadoGlobal.setLoadingFile(true);
       // Leemos el archivo y mostramos la tabla
-      const prueba = await estadoData.fetchData();
+      const prueba = await estadoData.readCSV();
       // Actualizamos el estatus
       estadoGlobal.setLoadingFile(false);
       estadoGlobal.actualizarStatusArchivo(

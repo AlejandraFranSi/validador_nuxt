@@ -10,21 +10,23 @@ export const useDataStore = defineStore("data", () => {
   const encoding = ref(null);
   const columnas = ref(null);
   const esquemaColumnas = ref(null);
-  const filas = ref(null);
   const totalFilas = ref(null);
   const totalColumnas = ref(null);
+  const nthRow = ref(null);
 
   const updatePath = function (pathString) {
     absolutePath.value = pathString;
   };
-  const fetchData = async function () {
+
+  const readCSV = async function () {
     const data_csv = await invoke("leer_csv", {
       rutaFront: absolutePath.value,
     });
     console.log("El archivo csv: ", data_csv);
     encoding.value = data_csv.nombre_encoding;
     caracteresCorruptos.value = data_csv.caracteresCorruptos;
-    filas.value = data_csv.filas;
+    //nthRow.value = filas.value[filas.value.length - 10];
+    console.log("El enésimo elemento: ", nthRow.value);
     totalFilas.value = data_csv.total_filas;
     columnas.value = data_csv.columnas;
     totalColumnas.value = data_csv.columnas.length;
@@ -35,11 +37,11 @@ export const useDataStore = defineStore("data", () => {
     absolutePath,
     isDataReady,
     columnas,
-    filas,
+    nthRow,
     totalFilas,
     totalColumnas,
     esquemaColumnas,
     updatePath,
-    fetchData,
+    readCSV,
   };
 });
