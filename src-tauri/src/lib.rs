@@ -171,9 +171,6 @@ fn leer_csv(ruta_front: String, state: tauri::State<'_, ContenedorDatos>) -> Res
         let opt:Vec<String>= fila.into_iter().map(|x| x.to_string()).collect();
         filas.push(opt);
     }
-    println!("Las filas del estado global: {:?}", state.filas_completas);
-    /*let slice_filas = &filas[0..10];
-    println!("Las filas recortadas: {:?}", slice_filas);*/
 
     // Ahora vamos a contruir el equema de las columnas que nos indicará 
     //el nombre de cada columna, su tipo y sus valores
@@ -218,10 +215,18 @@ fn parsear_columna(contenido_columna: &Vec<String>)->Result<String, Error>{
 }
 
 #[tauri::command]
-fn fetch_rows(state: tauri::State<'_, ContenedorDatos>) -> Vec<Vec<String>>{
+fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Vec<Vec<String>>{
     let rows = state.filas_completas.lock().unwrap();
+    let total_rows = rows.len();
+    let start = if start_index == 1{0}else{(start_index -1)  * block_size };
+    if total_rows <= start{
+        return Vec::new();
+    }
+    let try_end = start + block_size - 1;
+    let end = if try_end > total_rows {total_rows -1} else {try_end};
+    println!("El indice inicial es: {start} y el final {end}");
     // Aquí no me queda muy claro por qué tengo que pedir prestada la variable
-    let slice_rows = &rows[0..10];
+    let slice_rows = &rows[start..end];
     let mut owned_slice: Vec<Vec<String>> = Vec::new();
     for row in slice_rows{
         owned_slice.push(row.clone());

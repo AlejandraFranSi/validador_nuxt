@@ -1,11 +1,20 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useDataStore } from "../stores/data.js";
-import { invoke } from "@tauri-apps/api/core";
 
 const estadoData = useDataStore();
-const columnas = computed(() => estadoData.columnas);
-const filas = computed(() => estadoData.filas);
+const columnas = computed(() => estadoData.esquema.columnas);
+const filas = computed(() => estadoData.filas.bloques);
+const nthElement = computed(() => estadoData.filas.nthElement);
+const nthElementClass = ref(null);
+const target = ref(null);
+const filasFlat = computed(() => {
+  if (Object.keys(Object.values(estadoData.filas.bloques)).length === 1) {
+    return Object.values(estadoData.filas.bloques).flat();
+  } else {
+    return Object.values(estadoData.filas.bloques).flat();
+  }
+});
 const typeDict = {
   Fecha: "#EE4266",
   Numerico: "#FFFEC2",
@@ -13,30 +22,47 @@ const typeDict = {
 };
 
 function setColor(columnName) {
-  let option = estadoData.esquemaColumnas.filter(
+  let option = estadoData.esquema.esquemaColumnas.filter(
     (col) => col.nombre === columnName,
   )[0];
   return typeDict[option.tipo];
 }
 
+function buildElementClass(elementArray) {
+  return elementArray
+    .join("-")
+    .slice(0, 20)
+    .toLowerCase()
+    .replaceAll(" ", "_")
+    .replaceAll(".", "")
+    .replaceAll(",", "");
+}
+
+const fetchNewData = async function (entries, observer) {
+  if (estadoData.esquema.totalFilas > filasFlat.value.length) {
+    console.log("Se piden más datos");
+    await estadoData.fetchRows();
+    nthElementClass.value = buildElementClass(estadoData.filas.nthElement);
+    observer.unobserve(target.value);
+    target.value = document.querySelector(`tr.${nthElementClass.value}`);
+    observer.observe(target.value);
+  } else {
+    observer.unobserve(target.value);
+  }
+};
+
 onMounted(async () => {
-  const prueba = await invoke("fetch_rows");
-  console.log("La prueba", prueba);
-  /*const options = {
+  nthElementClass.value = buildElementClass(estadoData.filas.nthElement);
+  const options = {
     root: null,
     rootMargin: "0px",
     scrollMargin: "0px",
     threshold: 1.0,
   };
 
-  const fetchNewData = function (entries, observer) {
-    console.log("Se solicita nueva información");
-    entries.forEach((d) => console.log(d));
-  };
-
   const observer = new IntersectionObserver(fetchNewData, options);
-  const target = document.querySelector(".fila-Natación");
-  observer.observe(target);*/
+  target.value = document.querySelector(`tr.${nthElementClass.value}`);
+  observer.observe(target.value);
 });
 </script>
 <template>
@@ -62,11 +88,11 @@ onMounted(async () => {
             </th>
           </tr>
         </thead>
-        <!-- <tbody>
-          <tr v-for="fila in filas" :class="`fila-${fila[0]}`">
+        <tbody>
+          <tr v-for="fila in filasFlat" :class="`${buildElementClass(fila)}`">
             <td v-for="valor in fila">{{ valor }}</td>
           </tr>
-        </tbody> -->
+        </tbody>
       </table>
     </div>
   </div>

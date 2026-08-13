@@ -17,8 +17,8 @@ const estadoGlobal = useGlobalStore();
     </div>
     <div class="mesa-trabajo columna-13">
       <VistaCarga v-if="estadoGlobal.vistaSeleccionada === 'carga'" />
-      <VistaValidacion v-if="estadoGlobal.vistaSeleccionada === 'validacion'" />
-      <VistaEdicion v-if="estadoGlobal.vistaSeleccionada === 'edicion'" />
+      <!-- <VistaValidacion v-if="estadoGlobal.vistaSeleccionada === 'validacion'" />
+      <VistaEdicion v-if="estadoGlobal.vistaSeleccionada === 'edicion'" />-->
     </div>
   </main>
 </template>
