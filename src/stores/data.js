@@ -16,7 +16,7 @@ export const useDataStore = defineStore("data", () => {
   });
   const filas = ref({
     currentBlock: 1,
-    blockSize: 10,
+    blockSize: 100,
     nthElement: null,
     bloques: {},
   });
@@ -36,6 +36,9 @@ export const useDataStore = defineStore("data", () => {
     });
 
     if (!Object.keys(filas.value.bloques).includes(filas.value.currentBlock)) {
+      rowsBlock.forEach(
+        (d, index) => (d.indice = filas.value.currentBlock + index),
+      );
       filas.value.bloques[filas.value.currentBlock] = rowsBlock;
     }
     const lastBlock = Number(Object.keys(filas.value.bloques).at(-1));
@@ -50,7 +53,6 @@ export const useDataStore = defineStore("data", () => {
     const data_csv = await invoke("leer_csv", {
       rutaFront: absolutePath.value,
     });
-    console.log("El archivo csv: ", data_csv);
     // Actualizamos la variable del esquema de los datos
     esquema.value.encoding = data_csv.encoding_aplicado;
     esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
@@ -60,7 +62,7 @@ export const useDataStore = defineStore("data", () => {
     esquema.value.esquemaColumnas = data_csv.esquema_columnas;
 
     // Vamos a pedir el primer bloque de columnas
-    //await fetchRows();
+    await fetchRows();
     // Actualizamos el estado de los datos
     isDataReady.value = true;
   };

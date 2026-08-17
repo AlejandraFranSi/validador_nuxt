@@ -39,7 +39,6 @@ onMounted(() => {
       estadoGlobal.setLoadingFile(true);
       // Leemos el archivo y mostramos la tabla
       const prueba = await estadoData.readCSV();
-      console.log("El estado: ", estadoData.esquema);
       // Actualizamos el estatus
       estadoGlobal.setLoadingFile(false);
       estadoGlobal.actualizarStatusArchivo(
@@ -52,14 +51,10 @@ onMounted(() => {
     }
   });
 });
-
-watch(isDataReady, (nv) => {
-  console.log(nv);
-});
 </script>
 <template>
   <div>
-    <h1>Herramientas de limpieza para CSVS</h1>
+    <h1>Herramientas de limpieza para CSV</h1>
     <h2>¿Cómo funciona esta herramienta?</h2>
     <p>
       Aplica las transformaciones que necesites para que tu base de datos esté

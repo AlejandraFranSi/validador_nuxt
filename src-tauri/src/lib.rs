@@ -1,6 +1,7 @@
 // Import the libraries and functions we'll use
 use chardetng::{EncodingDetector,Iso2022JpDetection, Utf8Detection};
 use polars::prelude::*;
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet,};
 use std::{ fs::{File}};
 use std::io::{Read, BufReader, BufRead, BufWriter, Write};
@@ -17,7 +18,7 @@ pub fn run() {
          .manage(ContenedorDatos { 
             dataframe: Mutex::new(None),
         })
-        .invoke_handler(tauri::generate_handler![leer_csv])
+        .invoke_handler(tauri::generate_handler![leer_csv, fetch_rows])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -175,4 +176,17 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 
     Ok(ReporteCsv{encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
 
+}
+
+#[tauri::command]
+fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Result<Value, String> {
+    let start_index = if start_index == 1{0}else{(start_index -1)  * block_size };
+    println!("El indice inicial del slice del df: {:?}", start_index);
+    let rows = state.dataframe.lock().unwrap();
+    let mut df_slice = rows.as_ref().unwrap().slice(start_index.try_into().unwrap(), block_size).clone();
+
+    let mut buf = Vec::new();
+    JsonWriter::new(&mut buf).with_json_format(JsonFormat::Json).finish(&mut df_slice).map_err(|e| format!("Error de formato al escribir JSON: {}", e))?;
+    let json_rows: Value = serde_json::from_slice(&buf).map_err(|e| format!("Error al estructurar el JSON: {}", e))?;
+    Ok(json_rows)
 }
