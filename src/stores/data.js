@@ -52,11 +52,11 @@ export const useDataStore = defineStore("data", () => {
     });
     console.log("El archivo csv: ", data_csv);
     // Actualizamos la variable del esquema de los datos
-    esquema.value.encoding = data_csv.nombre_encoding;
-    esquema.value.caracteresCorruptos = data_csv.caracteresCorruptos;
+    esquema.value.encoding = data_csv.encoding_aplicado;
+    esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
     esquema.value.totalFilas = data_csv.total_filas;
-    esquema.value.columnas = data_csv.columnas;
-    esquema.value.totalColumnas = data_csv.columnas.length;
+    esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
+    esquema.value.totalColumnas = esquema.value.columnas.length;
     esquema.value.esquemaColumnas = data_csv.esquema_columnas;
 
     // Vamos a pedir el primer bloque de columnas

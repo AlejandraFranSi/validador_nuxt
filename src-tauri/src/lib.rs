@@ -1,11 +1,13 @@
 // Import the libraries and functions we'll use
 use chardetng::{EncodingDetector,Iso2022JpDetection, Utf8Detection};
-//use polars::prelude::*;
+use polars::prelude::*;
 use std::collections::{BTreeMap, BTreeSet,};
 use std::{ fs::{File}};
-use std::io::{Read, BufReader, BufRead};
+use std::io::{Read, BufReader, BufRead, BufWriter, Write};
 use std::sync::Mutex;
 use serde::{Serialize};
+use tauri::State;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
@@ -13,15 +15,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
          .manage(ContenedorDatos { 
-            filas_completas: Mutex::new(Vec::new()),
+            dataframe: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![leer_csv])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-pub struct ContenedorDatos {
-    pub filas_completas: Mutex<Vec<Vec<String>>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -37,12 +35,19 @@ pub struct EsquemaColumna {
 
 #[derive(Serialize)]
 pub struct ReporteCsv {
-    pub encoding_original: String,
-    pub requiere_conversion: bool,
+    pub encoding_aplicado: String,
+    //pub requiere_conversion: bool,
     pub caracteres_corruptos: Vec<CaracterCorrupto>,
-    pub total_rows: usize,
+    pub total_filas: usize,
     //pub columnas: Vec<String>,
-    //pub esquema_columnas: Vec<EsquemaColumna>,
+    pub esquema_columnas: Vec<EsquemaColumna>,
+}
+
+pub struct ContenedorDatos {
+    pub dataframe: Mutex<Option<DataFrame>>,
+    //pub referencia: Mutex<Option<DataFrame>>,
+    //pub ruta_original: Mutex<Option<String>>,
+    //pub ruta_sugerida: Mutex<Option<String>>
 }
 
 fn es_caracter_corrupto(c: char) -> bool {
@@ -80,7 +85,7 @@ fn es_caracter_corrupto(c: char) -> bool {
 }
 
 #[tauri::command]
-fn leer_csv(ruta_front: String){
+fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     // Confirmar que existe la ruta
     let ruta = ruta_front;
     
@@ -97,10 +102,13 @@ fn leer_csv(ruta_front: String){
     let mut file_as_bytes: BufReader<File> = BufReader::new(file_completo);
 
     // Queremos revisar si el encoding es utf8
+    let temp_path = std::env::temp_dir().join("temp_utf8.csv");
+    let temp_file = File::create(&temp_path).map_err(|e| e.to_string()).unwrap();
+    let mut writer = BufWriter::new(temp_file);
+
     let tuviera_errores = encoding_rs::UTF_8.decode(&partial_bytes).2;
     let mut encoding_aplicado = if tuviera_errores {"".to_string()} else { "UTF-8".to_string()} ;
     let mut mapa_caracteres: BTreeMap<char, BTreeSet<u64>> = BTreeMap::new();
-    let mut total_filas :usize = 0; 
     // Si el texto no es utf8, vamos a identificar qué encoding se usó
     // Parsearlo como utf8 y almacenarlo en algún lugar
     if tuviera_errores{
@@ -115,9 +123,12 @@ fn leer_csv(ruta_front: String){
         let encoder = detector.guess(None, Utf8Detection::Allow);
         encoding_aplicado = encoder.name().to_string();
         for (indice, linea) in file_as_bytes.split(b'\n').enumerate() {
-            total_filas += 1;
             let line = linea.map_err(|e| e.to_string()).unwrap();
             let encoded_line = encoder.decode(&line).0.to_string();
+            writer.write_all(encoded_line.as_bytes()).unwrap();
+            writer.write_all(b"\n").unwrap();
+
+            // Ahora obtenemos los caratceres corruptos
             let fila_actual = (indice + 1) as u64;
             for c in encoded_line.chars() {
                 if es_caracter_corrupto(c) {
@@ -125,11 +136,11 @@ fn leer_csv(ruta_front: String){
                 }
             }     
         }
-    } else {
-         
+    } else { 
         for (indice, linea) in file_as_bytes.lines().enumerate() {
-        total_filas += 1;
         let line = linea.map_err(|e| e.to_string()).unwrap();
+        writer.write_all(line.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
         let fila_actual = (indice + 1) as u64;
         for c in line.chars() {
                 if es_caracter_corrupto(c) {
@@ -138,14 +149,30 @@ fn leer_csv(ruta_front: String){
             }
         }
     }
-    
+
+    writer.flush().unwrap();
+
     let caracteres_corruptos: Vec<CaracterCorrupto> = mapa_caracteres.into_iter().map(|(caracter,filas)| CaracterCorrupto {
         caracter: caracter.to_string(),
         filas: filas.into_iter().collect()
     }).collect();
+    let mut esquema_columnas: Vec<EsquemaColumna> = Vec::new();
+    let file_dataframe = File::open(&temp_path).map_err(|e| e.to_string()).unwrap();
+    let mut df_as_bytes: BufReader<File> = BufReader::new(file_dataframe);    
+    let mut df = CsvReader::new(df_as_bytes).with_options(
+        CsvReadOptions::default()
+            .with_has_header(true)
+        ).finish().unwrap();
+    let total_filas = df.height();
+    for column in df.columns(){
+        let nombre = column.as_materialized_series().name().to_string();
+        let tipo = column.as_materialized_series().dtype().to_string();
+        esquema_columnas.push(EsquemaColumna{nombre, tipo});
+    }
 
-    println!("El mapa de caracteres corrputos: {:?}", caracteres_corruptos);  
+    let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
+    *guardado = Some(df);
 
-    //Ok(ReporteCsv{encoding_original, requiere_conversion, caracteres_corruptos, total_rows})
+    Ok(ReporteCsv{encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
 
 }

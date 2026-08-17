@@ -39,10 +39,11 @@ onMounted(() => {
       estadoGlobal.setLoadingFile(true);
       // Leemos el archivo y mostramos la tabla
       const prueba = await estadoData.readCSV();
+      console.log("El estado: ", estadoData.esquema);
       // Actualizamos el estatus
       estadoGlobal.setLoadingFile(false);
       estadoGlobal.actualizarStatusArchivo(
-        `Listo: ${estadoData.totalFilas} filas, ${estadoData.totalColumnas} columnas`,
+        `Listo: ${estadoData.esquema.totalFilas} filas, ${estadoData.esquema.totalColumnas} columnas`,
       );
       d3.selectAll("button.tools").property("disabled", false);
     } else {
