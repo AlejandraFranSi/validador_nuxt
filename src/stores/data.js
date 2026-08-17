@@ -60,7 +60,7 @@ export const useDataStore = defineStore("data", () => {
     esquema.value.esquemaColumnas = data_csv.esquema_columnas;
 
     // Vamos a pedir el primer bloque de columnas
-    await fetchRows();
+    //await fetchRows();
     // Actualizamos el estado de los datos
     isDataReady.value = true;
   };
