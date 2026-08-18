@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
-  const nthCount = 5;
+  const nthCount = 30;
   const esquema = ref({
     caracteresCorruptos: null,
     encoding: null,
@@ -16,7 +16,7 @@ export const useDataStore = defineStore("data", () => {
   });
   const filas = ref({
     currentBlock: 1,
-    blockSize: 10,
+    blockSize: 100,
     nthElement: null,
     bloques: {},
   });

@@ -10,6 +10,14 @@ const nthElementClass = computed(
   () => `fila-${estadoData.filas.nthElement.indice}`,
 );
 const target = ref(null);
+const observer = ref(null);
+const options = {
+  root: null,
+  rootMargin: "0px",
+  scrollMargin: "0px",
+  threshold: 0.1,
+};
+
 const filasFlat = computed(() =>
   Object.values(estadoData.filas.bloques).flat(),
 );
@@ -35,12 +43,17 @@ const fetchNewData = async function (entries, observer) {
       isFetchingData.value = true;
       observer.unobserve(target.value);
       await estadoData.fetchRows();
-      await nextTick();
-      target.value = document.querySelector(`${nthElementClass.value}`);
-      console.log("El nuevo target: ", nthElement.value);
-      console.log("El nuevo target: ", nthElementClass.value);
-
       isFetchingData.value = false;
+      await nextTick();
+      console.log(
+        "La clase del enésimo nuevo elemento:",
+        nthElementClass.value,
+      );
+      target.value = document.querySelector(`.${nthElementClass.value}`);
+      console.log("El nuevo target: ", target.value);
+      if (target.value) {
+        observer.observe(target.value);
+      }
     } else {
       observer.unobserve(target.value);
     }
@@ -48,17 +61,10 @@ const fetchNewData = async function (entries, observer) {
 };
 
 onMounted(async () => {
-  const options = {
-    root: null,
-    rootMargin: "0px",
-    scrollMargin: "0px",
-    threshold: 0.1,
-  };
-
-  const observer = new IntersectionObserver(fetchNewData, options);
+  observer.value = new IntersectionObserver(fetchNewData, options);
   target.value = document.querySelector(`.${nthElementClass.value}`);
-  if (target) {
-    observer.observe(target.value);
+  if (target.value) {
+    observer.value.observe(target.value);
   }
   //console.log(nthElementClass.value);
 });
