@@ -13,6 +13,7 @@ const target = ref(null);
 const filasFlat = computed(() =>
   Object.values(estadoData.filas.bloques).flat(),
 );
+const isFetchingData = ref(false);
 const typeDict = {
   Fecha: "#EE4266",
   Numerico: "#FFFEC2",
@@ -27,16 +28,23 @@ const typeDict = {
 }*/
 
 const fetchNewData = async function (entries, observer) {
-  console.log(entries[0].isIntersecting);
-  /*if (estadoData.esquema.totalFilas > filasFlat.value.length) {
-    console.log("Se piden más datos");
-    await estadoData.fetchRows();
-    observer.unobserve(target.value);
-    target.value = document.querySelector(`tr.${nthElementClass.value}`);
-    observer.observe(target.value);
-  } else {
-    observer.unobserve(target.value);
-  }*/
+  if (entries[0].isIntersecting && !isFetchingData.value) {
+    console.log("Hay intersección y podemos pedir datos");
+    if (estadoData.esquema.totalFilas > filasFlat.value.length) {
+      console.log("Se piden más datos");
+      isFetchingData.value = true;
+      observer.unobserve(target.value);
+      await estadoData.fetchRows();
+      await nextTick();
+      target.value = document.querySelector(`${nthElementClass.value}`);
+      console.log("El nuevo target: ", nthElement.value);
+      console.log("El nuevo target: ", nthElementClass.value);
+
+      isFetchingData.value = false;
+    } else {
+      observer.unobserve(target.value);
+    }
+  }
 };
 
 onMounted(async () => {
@@ -44,17 +52,19 @@ onMounted(async () => {
     root: null,
     rootMargin: "0px",
     scrollMargin: "0px",
-    threshold: 1.0,
+    threshold: 0.1,
   };
 
   const observer = new IntersectionObserver(fetchNewData, options);
   target.value = document.querySelector(`.${nthElementClass.value}`);
-  observer.observe(target.value);
+  if (target) {
+    observer.observe(target.value);
+  }
   //console.log(nthElementClass.value);
 });
 
-/*watch(filasFlat, () => {
-  console.log("las filas flat: ", filas);
+/*watch(filasFlat, async () => {
+  //observer.observe(target.value);
 });*/
 </script>
 <template>

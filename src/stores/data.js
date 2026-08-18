@@ -37,7 +37,9 @@ export const useDataStore = defineStore("data", () => {
 
     if (!Object.keys(filas.value.bloques).includes(filas.value.currentBlock)) {
       rowsBlock.forEach(
-        (d, index) => (d.indice = filas.value.currentBlock + index),
+        (d, index) =>
+          (d.indice =
+            (filas.value.currentBlock - 1) * filas.value.blockSize + index),
       );
       filas.value.bloques[filas.value.currentBlock] = rowsBlock;
     }
