@@ -5,9 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
+  const nthCount = 5;
   const esquema = ref({
     caracteresCorruptos: null,
-    requiereConversion: null,
     encoding: null,
     columnas: null,
     esquemaColumnas: null,
@@ -16,7 +16,7 @@ export const useDataStore = defineStore("data", () => {
   });
   const filas = ref({
     currentBlock: 1,
-    blockSize: 100,
+    blockSize: 10,
     nthElement: null,
     bloques: {},
   });
@@ -41,14 +41,18 @@ export const useDataStore = defineStore("data", () => {
       );
       filas.value.bloques[filas.value.currentBlock] = rowsBlock;
     }
-    const lastBlock = Number(Object.keys(filas.value.bloques).at(-1));
-    filas.value.nthElement =
-      filas.value.bloques[lastBlock][filas.value.blockSize - 5];
+    const filas_flat = Object.values(filas.value.bloques).flat();
+    filas.value.nthElement = filas_flat[filas_flat.length - nthCount];
     updateCurrentBlock();
   };
 
   const readCSV = async function () {
     isDataReady.value = false;
+    // Cada que cargamos un archivo nuevo, reseteamos las filas
+    filas.value.currentBlock = 1;
+    filas.value.nthElement = null;
+    filas.value.bloques = {};
+
     // Solicitamos el esquema de los datos
     const data_csv = await invoke("leer_csv", {
       rutaFront: absolutePath.value,

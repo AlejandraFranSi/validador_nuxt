@@ -27,7 +27,8 @@ const typeDict = {
 }*/
 
 const fetchNewData = async function (entries, observer) {
-  if (estadoData.esquema.totalFilas > filasFlat.value.length) {
+  console.log(entries[0].isIntersecting);
+  /*if (estadoData.esquema.totalFilas > filasFlat.value.length) {
     console.log("Se piden más datos");
     await estadoData.fetchRows();
     observer.unobserve(target.value);
@@ -35,14 +36,12 @@ const fetchNewData = async function (entries, observer) {
     observer.observe(target.value);
   } else {
     observer.unobserve(target.value);
-  }
+  }*/
 };
 
 onMounted(async () => {
-  console.log(nthElementClass.value);
-
   const options = {
-    root: document.querySelector(".contenedor-tabla"),
+    root: null,
     rootMargin: "0px",
     scrollMargin: "0px",
     threshold: 1.0,
@@ -54,9 +53,9 @@ onMounted(async () => {
   //console.log(nthElementClass.value);
 });
 
-watch(filasFlat, () => {
+/*watch(filasFlat, () => {
   console.log("las filas flat: ", filas);
-});
+});*/
 </script>
 <template>
   <div>

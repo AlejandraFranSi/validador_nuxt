@@ -181,7 +181,6 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 #[tauri::command]
 fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Result<Value, String> {
     let start_index = if start_index == 1{0}else{(start_index -1)  * block_size };
-    println!("El indice inicial del slice del df: {:?}", start_index);
     let rows = state.dataframe.lock().unwrap();
     let mut df_slice = rows.as_ref().unwrap().slice(start_index.try_into().unwrap(), block_size).clone();
 
