@@ -42,7 +42,7 @@ onMounted(() => {
       // Actualizamos el estatus
       estadoGlobal.setLoadingFile(false);
       estadoGlobal.actualizarStatusArchivo(
-        `Listo: ${estadoData.totalFilas} filas, ${estadoData.totalColumnas} columnas`,
+        `Listo: ${estadoData.esquema.totalFilas} filas, ${estadoData.esquema.totalColumnas} columnas`,
       );
       d3.selectAll("button.tools").property("disabled", false);
     } else {
@@ -51,14 +51,10 @@ onMounted(() => {
     }
   });
 });
-
-watch(isDataReady, (nv) => {
-  console.log(nv);
-});
 </script>
 <template>
   <div>
-    <h1>Herramientas de limpieza para CSVS</h1>
+    <h1>Herramientas de limpieza para CSV</h1>
     <h2>¿Cómo funciona esta herramienta?</h2>
     <p>
       Aplica las transformaciones que necesites para que tu base de datos esté

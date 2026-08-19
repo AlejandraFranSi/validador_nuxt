@@ -1,23 +1,14 @@
 // Import the libraries and functions we'll use
 use chardetng::{EncodingDetector,Iso2022JpDetection, Utf8Detection};
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
-use chrono::format::ParseError;
-use csv::{Error, ReaderBuilder, StringRecord};
-//use encoding_rs::Encoding;
+use polars::prelude::*;
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet,};
-use std::{ fs::File};
-use std::io::{Read,BufReader};
-use serde::{Serialize};
+use std::{ fs::{File}};
+use std::io::{Read, BufReader, BufRead, BufWriter, Write};
 use std::sync::Mutex;
+use serde::{Serialize};
 use tauri::State;
 use tauri::Manager;
-
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
@@ -25,15 +16,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
          .manage(ContenedorDatos { 
-            filas_completas: Mutex::new(Vec::new()),
+            dataframe: Mutex::new(None),
         })
-        .invoke_handler(tauri::generate_handler![greet, leer_csv, fetch_rows])
+        .invoke_handler(tauri::generate_handler![leer_csv, fetch_rows])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-pub struct ContenedorDatos {
-    pub filas_completas: Mutex<Vec<Vec<String>>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -45,7 +32,23 @@ pub struct CaracterCorrupto {
 pub struct EsquemaColumna {
     pub nombre: String,
     pub tipo: String,
-    pub col_vals: Vec<String>
+}
+
+#[derive(Serialize)]
+pub struct ReporteCsv {
+    pub encoding_aplicado: String,
+    //pub requiere_conversion: bool,
+    pub caracteres_corruptos: Vec<CaracterCorrupto>,
+    pub total_filas: usize,
+    //pub columnas: Vec<String>,
+    pub esquema_columnas: Vec<EsquemaColumna>,
+}
+
+pub struct ContenedorDatos {
+    pub dataframe: Mutex<Option<DataFrame>>,
+    //pub referencia: Mutex<Option<DataFrame>>,
+    //pub ruta_original: Mutex<Option<String>>,
+    //pub ruta_sugerida: Mutex<Option<String>>
 }
 
 fn es_caracter_corrupto(c: char) -> bool {
@@ -82,154 +85,107 @@ fn es_caracter_corrupto(c: char) -> bool {
     false
 }
 
-#[derive(Serialize)]
-pub struct ReporteCsv {
-    pub nombre_encoding: String,
-    pub requiere_conversion: bool,
-    pub caracteres_corruptos: Vec<CaracterCorrupto>,
-    pub columnas: Vec<String>,
-    pub esquema_columnas: Vec<EsquemaColumna>,
-    pub total_filas: usize,
-
-}
 #[tauri::command]
-fn leer_csv(ruta_front: String, state: tauri::State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
-    // Esta fucnión debe devolver un objeto con las siguientes keys:
-    // caracteres_corruptos, encoding detectado, requiere_conversion, columnas, total_filas, esquema
+fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     // Confirmar que existe la ruta
     let ruta = ruta_front;
+    
+    // Vamos a leer el archivo y guardarlos en un vector de bytes
+    let file = File::open(&ruta).map_err(|e| e.to_string()).unwrap();
+    
+    // Vamos a leer solo una parte del archivo para poder identificar el encoding
+    let mut partial_reader = BufReader::new(file);
+    let mut partial_bytes = vec![0; 4096];
+    partial_reader.read(&mut partial_bytes).map_err(|e| e.to_string());
 
-    // Leer el archivo como bytes
-    // Para leer el archivo creamos un buffer, que es un bloque temporal de memoria que se usa 
-    // mientras se mueve de un espacio a otro. Entonces, se leen los bytes del archivo y se van agregando al buffer
-    let file: File = File::open(&ruta).map_err(|e| e.to_string())?;
-    let mut reader = BufReader::new(file);
-    let mut buffer_inicio = vec![0; 4096];
-    let bytes_leidos =  reader.read(&mut buffer_inicio).map_err(|e| e.to_string())?;
+    // Y también vamos a leer todo para poder iterar sobre el contenido
+    let file_completo = File::open(&ruta).map_err(|e| e.to_string()).unwrap();
+    let mut file_as_bytes: BufReader<File> = BufReader::new(file_completo);
 
-    let mut file_completo = File::open(&ruta).map_err(|e| e.to_string())?;
-    let mut bytes_puros = Vec::new();
-    file_completo.read_to_end(&mut bytes_puros).map_err(|e| e.to_string())?;
-    //println!("Bytes file completo: {:?}", bytes_puros);
+    // Queremos revisar si el encoding es utf8
+    let temp_path = std::env::temp_dir().join("temp_utf8.csv");
+    let temp_file = File::create(&temp_path).map_err(|e| e.to_string()).unwrap();
+    let mut writer = BufWriter::new(temp_file);
 
-    // Parseamos los bytes_puros como UTF8 y revisamos que no tenga caracteres extraños
-    // Se definen las siguientes variables a partir del output que tiene la siguiente forma
-    // (Cow<'a, str>, &'static Encoding, bool). El bool regresa true cuando detecta secuencias inválidas 
-    let (texto_convertido, _encod, tuviera_errores) = encoding_rs::UTF_8.decode(&bytes_puros);
+    let tuviera_errores = encoding_rs::UTF_8.decode(&partial_bytes).2;
+    let mut encoding_aplicado = if tuviera_errores {"".to_string()} else { "UTF-8".to_string()} ;
     let mut mapa_caracteres: BTreeMap<char, BTreeSet<u64>> = BTreeMap::new();
-    let mut nombre_encoding = if tuviera_errores {"".to_string()} else { "UTF-8".to_string()} ;
-    let requiere_conversion = if tuviera_errores {true} else { false};
-    let mut texto_decodificado= texto_convertido.into_owned();
+    // Si el texto no es utf8, vamos a identificar qué encoding se usó
+    // Parsearlo como utf8 y almacenarlo en algún lugar
     if tuviera_errores{
         // Constuirmos un detector de encoding en el cual se rechaza la posibilidad de que el resultado sea ISO-2022-JP
+        // Adivinamos el encoding, permitiendo que la respuesta sea utf8
+        // Decodificamos el texto usando el nuevo encoding. 
+        // Si encontramos un caracter corrupto lo agregamos a mapa_caracteres
+        // Se revisa si el elemento ya está en mapa_caracteres, si no está se agrega un valor default con or_default()
+        // Y luego se llena ese valor default con el valor de fila_actual
         let mut detector = EncodingDetector::new(Iso2022JpDetection::Deny);
-        detector.feed(&buffer_inicio[..bytes_leidos], true);
-        //Adivinamos el encoding, permitiendo que la respuesta sea utf8
-        let encoding_alternativo = detector.guess(None, Utf8Detection::Allow);
-        nombre_encoding = encoding_alternativo.name().to_string();
-        // Decodificamos el texto usando el nuevo encoding. La función decode regresa tres valores:
-        // El texto,  _encalt, _err
-        texto_decodificado = encoding_alternativo.decode(&bytes_puros).0.into_owned();
-    }
+        detector.feed(&partial_bytes, true);
+        let encoder = detector.guess(None, Utf8Detection::Allow);
+        encoding_aplicado = encoder.name().to_string();
+        for (indice, linea) in file_as_bytes.split(b'\n').enumerate() {
+            let line = linea.map_err(|e| e.to_string()).unwrap();
+            let encoded_line = encoder.decode(&line).0.to_string();
+            writer.write_all(encoded_line.as_bytes()).unwrap();
+            writer.write_all(b"\n").unwrap();
 
-    for (indice, linea) in texto_decodificado.lines().enumerate() {
+            // Ahora obtenemos los caratceres corruptos
+            let fila_actual = (indice + 1) as u64;
+            for c in encoded_line.chars() {
+                if es_caracter_corrupto(c) {
+                    mapa_caracteres.entry(c).or_default().insert(fila_actual);
+                }
+            }     
+        }
+    } else { 
+        for (indice, linea) in file_as_bytes.lines().enumerate() {
+        let line = linea.map_err(|e| e.to_string()).unwrap();
+        writer.write_all(line.as_bytes()).unwrap();
+        writer.write_all(b"\n").unwrap();
         let fila_actual = (indice + 1) as u64;
-        for c in linea.chars() {
-            if es_caracter_corrupto(c) {
-                // Si encontramos un caracter corrupto lo agregamos a mapa_caracteres
-                // Se revisa si el elemento ya está en mapa_caracteres, si no está se agrega un valor default con or_default()
-                // Y luego se llena ese valor default con el valor de fila_actual
-                mapa_caracteres.entry(c).or_default().insert(fila_actual);
+        for c in line.chars() {
+                if es_caracter_corrupto(c) {
+                    mapa_caracteres.entry(c).or_default().insert(fila_actual);
+                }
             }
         }
     }
 
-    // ¿Por qué es necesario crear una nueva estructura para los caracteres corruptos? 
-    //¿Es para poder consumirlo desde el front?
+    writer.flush().unwrap();
+
     let caracteres_corruptos: Vec<CaracterCorrupto> = mapa_caracteres.into_iter().map(|(caracter,filas)| CaracterCorrupto {
         caracter: caracter.to_string(),
         filas: filas.into_iter().collect()
     }).collect();
-
-    // Primero vamos a obtener las columnas usando el crate csv y 
-    // vamos a quitar espacios vacíos al inicio y final de los nombres
-    let mut rdr = ReaderBuilder::new().from_reader(texto_decodificado.as_bytes());
-    let columnas: Vec<String>= rdr.headers().map_err(|e| e.to_string()).unwrap().iter().map(|x| x.trim().to_string()).collect();
-
-    // Esta forma de contar las filas se rompe cuando se ecede cierto máximo
-    //let total_filas = rdr.records().count();
-    // Para evitar crear dos iteradores para obtener las filas, 
-    // primero creamos un vector con las filas y luego obtenemos su longitud
-    let mut filas = state.filas_completas.lock().unwrap();
-    //let mut filas = Vec::new();
-    let filas_sr: Vec<StringRecord> = rdr.records().map(|record| record.unwrap()).collect();
-    let total_filas = filas_sr.len();
-
-    // Obtenemos las filas
-    for fila in &filas_sr{
-        // Fila es un StringRecord, entonces lo vamos a convertir en un vector con de strings
-        let opt:Vec<String>= fila.into_iter().map(|x| x.to_string()).collect();
-        filas.push(opt);
+    let mut esquema_columnas: Vec<EsquemaColumna> = Vec::new();
+    let file_dataframe = File::open(&temp_path).map_err(|e| e.to_string()).unwrap();
+    let mut df_as_bytes: BufReader<File> = BufReader::new(file_dataframe);    
+    let mut df = CsvReader::new(df_as_bytes).with_options(
+        CsvReadOptions::default()
+            .with_has_header(true)
+        ).finish().unwrap();
+    let total_filas = df.height();
+    for column in df.columns(){
+        let nombre = column.as_materialized_series().name().to_string();
+        let tipo = column.as_materialized_series().dtype().to_string();
+        esquema_columnas.push(EsquemaColumna{nombre, tipo});
     }
 
-    // Ahora vamos a contruir el equema de las columnas que nos indicará 
-    //el nombre de cada columna, su tipo y sus valores
-    let mut esquema_columnas: Vec<EsquemaColumna>= Vec::new();
-    for (i, col) in columnas.iter().enumerate(){
-        let mut contenido_col = Vec::new();
-        for record in &filas_sr{
-            contenido_col.push( record.get(i).unwrap().trim().to_string());
-        }
-        let tipo_col = parsear_columna(&contenido_col).unwrap();
-        esquema_columnas.push(EsquemaColumna{nombre: col.clone(), tipo: tipo_col.to_string(), col_vals: contenido_col})
-    }
+    let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
+    *guardado = Some(df);
 
-    Ok(ReporteCsv{nombre_encoding, requiere_conversion, caracteres_corruptos, columnas, esquema_columnas, total_filas, })
+    Ok(ReporteCsv{encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
 
-}
-
-fn parsear_columna(contenido_columna: &Vec<String>)->Result<String, Error>{
-    let mut tipo: String = "".to_string();
-    for formato in ["%Y-%m-%d", "%d-%m-%Y","%Y/%m/%d", "%d/%m/%Y"] {
-        // A partir de los distintos formaros de fecha dados, se intenta parsear como fecha
-        // Se crea un nuevo vector con los casos que fueron exitosos y se comparan las longitudes
-        // Si las longitudes coinciden se marca como fecha
-        let parsed_as_datetime:Vec<_> = contenido_columna.iter().map(|x| NaiveDate::parse_from_str(x, formato)).collect();
-        let is_datetime: Vec<&Result<NaiveDate, ParseError>> = parsed_as_datetime.iter().filter(|x| x.is_ok()).collect();
-        if contenido_columna.len() == is_datetime.len(){
-            tipo = "Fecha".to_string();
-        }
-    };
-
-    if tipo == "" {
-        // Lo mismo pero parseando como numero
-        let parsed_as_number: Vec<Result<i32, std::num::ParseIntError>> = contenido_columna.iter().map(|x| x.parse::<i32>()).collect();
-        let is_number: Vec<_> = parsed_as_number.iter().filter(|x| x.is_ok()).collect();
-        if contenido_columna.len() == is_number.len(){
-            tipo = "Numerico".to_string();
-        } else{
-            tipo = "Texto".to_string();
-        }
-    }
-    Ok(tipo)
 }
 
 #[tauri::command]
-fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Vec<Vec<String>>{
-    let rows = state.filas_completas.lock().unwrap();
-    let total_rows = rows.len();
-    let start = if start_index == 1{0}else{(start_index -1)  * block_size };
-    if total_rows <= start{
-        return Vec::new();
-    }
-    let try_end = start + block_size - 1;
-    let end = if try_end > total_rows {total_rows -1} else {try_end};
-    println!("El indice inicial es: {start} y el final {end}");
-    // Aquí no me queda muy claro por qué tengo que pedir prestada la variable
-    let slice_rows = &rows[start..end];
-    let mut owned_slice: Vec<Vec<String>> = Vec::new();
-    for row in slice_rows{
-        owned_slice.push(row.clone());
-    }
-    owned_slice
+fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Result<Value, String> {
+    let start_index = if start_index == 1{0}else{(start_index -1)  * block_size };
+    let rows = state.dataframe.lock().unwrap();
+    let mut df_slice = rows.as_ref().unwrap().slice(start_index.try_into().unwrap(), block_size).clone();
+
+    let mut buf = Vec::new();
+    JsonWriter::new(&mut buf).with_json_format(JsonFormat::Json).finish(&mut df_slice).map_err(|e| format!("Error de formato al escribir JSON: {}", e))?;
+    let json_rows: Value = serde_json::from_slice(&buf).map_err(|e| format!("Error al estructurar el JSON: {}", e))?;
+    Ok(json_rows)
 }

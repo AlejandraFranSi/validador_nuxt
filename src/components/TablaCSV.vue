@@ -6,64 +6,72 @@ const estadoData = useDataStore();
 const columnas = computed(() => estadoData.esquema.columnas);
 const filas = computed(() => estadoData.filas.bloques);
 const nthElement = computed(() => estadoData.filas.nthElement);
-const nthElementClass = ref(null);
+const nthElementClass = computed(
+  () => `fila-${estadoData.filas.nthElement.indice}`,
+);
 const target = ref(null);
-const filasFlat = computed(() => {
-  if (Object.keys(Object.values(estadoData.filas.bloques)).length === 1) {
-    return Object.values(estadoData.filas.bloques).flat();
-  } else {
-    return Object.values(estadoData.filas.bloques).flat();
-  }
-});
+const observer = ref(null);
+const options = {
+  root: null,
+  rootMargin: "0px",
+  scrollMargin: "0px",
+  threshold: 0.1,
+};
+
+const filasFlat = computed(() =>
+  Object.values(estadoData.filas.bloques).flat(),
+);
+const isFetchingData = ref(false);
 const typeDict = {
   Fecha: "#EE4266",
   Numerico: "#FFFEC2",
   Texto: "#2BB4DE",
 };
 
-function setColor(columnName) {
+/*function setColor(columnName) {
   let option = estadoData.esquema.esquemaColumnas.filter(
     (col) => col.nombre === columnName,
   )[0];
   return typeDict[option.tipo];
-}
-
-function buildElementClass(elementArray) {
-  return elementArray
-    .join("-")
-    .slice(0, 20)
-    .toLowerCase()
-    .replaceAll(" ", "_")
-    .replaceAll(".", "")
-    .replaceAll(",", "");
-}
+}*/
 
 const fetchNewData = async function (entries, observer) {
-  if (estadoData.esquema.totalFilas > filasFlat.value.length) {
-    console.log("Se piden más datos");
-    await estadoData.fetchRows();
-    nthElementClass.value = buildElementClass(estadoData.filas.nthElement);
-    observer.unobserve(target.value);
-    target.value = document.querySelector(`tr.${nthElementClass.value}`);
-    observer.observe(target.value);
-  } else {
-    observer.unobserve(target.value);
+  if (entries[0].isIntersecting && !isFetchingData.value) {
+    console.log("Hay intersección y podemos pedir datos");
+    if (estadoData.esquema.totalFilas > filasFlat.value.length) {
+      console.log("Se piden más datos");
+      isFetchingData.value = true;
+      observer.unobserve(target.value);
+      await estadoData.fetchRows();
+      isFetchingData.value = false;
+      await nextTick();
+      console.log(
+        "La clase del enésimo nuevo elemento:",
+        nthElementClass.value,
+      );
+      target.value = document.querySelector(`.${nthElementClass.value}`);
+      console.log("El nuevo target: ", target.value);
+      if (target.value) {
+        observer.observe(target.value);
+      }
+    } else {
+      observer.unobserve(target.value);
+    }
   }
 };
 
 onMounted(async () => {
-  nthElementClass.value = buildElementClass(estadoData.filas.nthElement);
-  const options = {
-    root: null,
-    rootMargin: "0px",
-    scrollMargin: "0px",
-    threshold: 1.0,
-  };
-
-  const observer = new IntersectionObserver(fetchNewData, options);
-  target.value = document.querySelector(`tr.${nthElementClass.value}`);
-  observer.observe(target.value);
+  observer.value = new IntersectionObserver(fetchNewData, options);
+  target.value = document.querySelector(`.${nthElementClass.value}`);
+  if (target.value) {
+    observer.value.observe(target.value);
+  }
+  //console.log(nthElementClass.value);
 });
+
+/*watch(filasFlat, async () => {
+  //observer.observe(target.value);
+});*/
 </script>
 <template>
   <div>
@@ -80,17 +88,14 @@ onMounted(async () => {
       <table>
         <thead>
           <tr>
-            <th
-              v-for="columna in columnas"
-              :style="{ 'background-color': setColor(columna) }"
-            >
+            <th v-for="columna in columnas">
               {{ columna }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="fila in filasFlat" :class="`${buildElementClass(fila)}`">
-            <td v-for="valor in fila">{{ valor }}</td>
+          <tr v-for="fila in filasFlat" :class="`fila-${fila.indice}`">
+            <td v-for="columna in columnas">{{ fila[columna] }}</td>
           </tr>
         </tbody>
       </table>
