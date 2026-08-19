@@ -2,12 +2,14 @@ import { ref } from "vue";
 import { defineStore } from "pinia";
 
 export const useGlobalStore = defineStore("global", () => {
-  const vistaSeleccionada = ref("carga");
+  const seccionSeleccionada = ref("limpieza");
+  const subseccionSeleccionada = ref("carga");
   const statusArchivo = ref("Sin archivo cargado");
   const loadingFile = ref(false);
 
-  const actualizarVista = function (nuevaVista) {
-    vistaSeleccionada.value = nuevaVista;
+  const actualizarVista = function (seccion, subseccion) {
+    seccionSeleccionada.value = seccion;
+    subseccionSeleccionada.value = subseccion;
   };
 
   const actualizarStatusArchivo = function (nuevoStatus) {
@@ -19,7 +21,8 @@ export const useGlobalStore = defineStore("global", () => {
   };
 
   return {
-    vistaSeleccionada,
+    seccionSeleccionada,
+    subseccionSeleccionada,
     statusArchivo,
     loadingFile,
     actualizarVista,

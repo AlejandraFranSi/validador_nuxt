@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { useDataStore } from "../stores/data.js";
+import { useDataStore } from "../../stores/data.js";
 
 const estadoData = useDataStore();
 const columnas = computed(() => estadoData.esquema.columnas);

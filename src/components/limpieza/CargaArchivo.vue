@@ -1,10 +1,10 @@
 <script setup>
-import TablaCSV from "./TablaCSV.vue";
+import TablaCSV from "../base/TablaCSV.vue";
 import * as d3 from "d3";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onMounted, ref, watch, computed } from "vue";
-import { useGlobalStore } from "../stores/global.js";
-import { useDataStore } from "../stores/data.js";
+import { useGlobalStore } from "../../stores/global.js";
+import { useDataStore } from "../../stores/data.js";
 import { invoke } from "@tauri-apps/api/core";
 // const invoke = window.__TAURI__.core.invoke;
 const estadoGlobal = useGlobalStore();
@@ -54,20 +54,20 @@ onMounted(() => {
 </script>
 <template>
   <div>
-    <h1>Herramientas de limpieza para CSV</h1>
-    <h2>¿Cómo funciona esta herramienta?</h2>
-    <p>
-      Aplica las transformaciones que necesites para que tu base de datos esté
-      más limpia.
-    </p>
     <p>Comienza cargando un archivo.</p>
-
     <div class="flex">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"
         id="dropZone"
       >
         <p class="p-3">{{ dropZoneText }}</p>
+      </div>
+    </div>
+    <div id="stata" class="m-y-1 m-x-2">
+      <p><b>Estatus</b></p>
+      <div class="flex m-y-1">
+          <img v-if="estadoGlobal.loadingFile" alt="cargando" src="../assets/pink-spinner.gif"></img>
+          <p class="columna-12">{{ estadoGlobal.statusArchivo }}</p>
       </div>
     </div>
     <TablaCSV v-if="estadoData.isDataReady" />

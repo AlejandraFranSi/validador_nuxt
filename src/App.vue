@@ -1,7 +1,7 @@
 <script setup>
-import VistaCarga from "./components/VistaCarga.vue";
-import VistaEdicion from "./components/VistaEdicion.vue";
-import VistaValidacion from "./components/VistaValidacion.vue";
+import LimpiezaCSV from "./components/LimpiezaCSV.vue";
+import ConfiguracionDiccionarios from "./components/ConfiguracionDiccionarios.vue";
+import RevisionMetadatos from "./components/RevisionMetadatos.vue";
 import SideBar from "./components/SideBar.vue";
 import { ref, watch } from "vue";
 import { useGlobalStore } from "./stores/global.js";
@@ -16,9 +16,13 @@ const estadoGlobal = useGlobalStore();
       <SideBar />
     </div>
     <div class="mesa-trabajo columna-13">
-      <VistaCarga v-if="estadoGlobal.vistaSeleccionada === 'carga'" />
-      <!-- <VistaValidacion v-if="estadoGlobal.vistaSeleccionada === 'validacion'" />
-      <VistaEdicion v-if="estadoGlobal.vistaSeleccionada === 'edicion'" />-->
+      <RevisionMetadatos
+        v-if="estadoGlobal.seccionSeleccionada === 'metadatos'"
+      />
+      <ConfiguracionDiccionarios
+        v-if="estadoGlobal.seccionSeleccionada === 'diccionario'"
+      />
+      <LimpiezaCSV v-if="estadoGlobal.seccionSeleccionada === 'limpieza'" />
     </div>
   </main>
 </template>
@@ -34,6 +38,10 @@ body[data-perfil="predeterminada"],
   --color-neutro-2: #c9cfcf;
   --color-neutro-1: #eaecec;
   --color-neutro-0: #ffffff;
+}
+body {
+  margin: 0px;
+  padding: 0px;
 }
 
 .boton-validacion {
