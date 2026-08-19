@@ -1,5 +1,6 @@
 <script setup>
 import TablaCSV from "../base/TablaCSV.vue";
+import Errores from "../base/Errores.vue";
 import * as d3 from "d3";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onMounted, ref, watch, computed, defineEmits } from "vue";
@@ -12,6 +13,7 @@ const estadoData = useDataStore();
 const appWindow = getCurrentWindow();
 const dropZoneText = ref(null);
 const isDataReady = computed(() => estadoData.isDataReady);
+const archivoInvalido = ref(false);
 
 
 onMounted(() => {
@@ -24,12 +26,17 @@ onMounted(() => {
       // Cuando aún no se suelta el archivo
       dropZone.classed("dragover", true);
     } else if (event.payload.type === "drop") {
+      //Cada vez que cargamos un archivo, reseteamos la info
+      estadoData.resetearEsquema();
+      estadoGlobal.actualizarStatusArchivo("Sin archivo cargado");
       // Al soltar el archivo
+      archivoInvalido.value = false;
       estadoData.updatePath(event.payload.paths[0]);
       dropZone.classed("dragover", false);
       // Validamos que el archivo efectivamente sea un csv
       if (!estadoData.absolutePath.toLowerCase().endsWith(".csv")) {
-        alert("El archivo debe tener formato CSV.");
+        //alert("El archivo debe tener formato CSV.");
+        archivoInvalido.value = true;
         return;
       }
       // En caso de que sí sea un csv, actualizamos la interfaz
@@ -54,8 +61,8 @@ onMounted(() => {
 </script>
 <template>
   <div>
-    <h4>Comienza cargando un archivo.</h4>
-    <div class="flex">
+    <h4>Comienza cargando un archivo</h4>
+    <div class="flex flex-contenido-centrado">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"
         id="dropZone"
@@ -63,14 +70,26 @@ onMounted(() => {
         <p class="p-3">{{ dropZoneText }}</p>
       </div>
     </div>
-    <div id="stata" class="m-y-1 m-x-2">
-      <p><b>Estatus</b></p>
-      <div class="flex m-y-1">
-          <img v-if="estadoGlobal.loadingFile" alt="cargando" src="../assets/pink-spinner.gif"></img>
-          <p class="columna-12">{{ estadoGlobal.statusArchivo }}</p>
+    <div id="state" class="flex flex-contenido-centrado">
+      <!--<p><b>Estatus:</b> {{ estadoGlobal.statusArchivo }}</p>-->
+      <Errores v-if="archivoInvalido">
+        <p class="m-y-1 m-x-2">El archivo debe tener formato CSV.</p>
+      </Errores>
+      <div v-if="!archivoInvalido && isDataReady" class="m-y-2 p-2 texto-color-confirmacion fondo-color-confirmacion borde borde-redondeado-8 columna-14">
+        <p class="m-0">Archivo cargado correctamente</p>
+        <ul class="m-0">
+          <li class="m-0">Número de filas: {{ estadoData.esquema.totalFilas }}</li>
+          <li class="m-0">Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
+          <li class="m-0">Encoding: {{ estadoData.esquema.encoding }}</li>
+          <li class="m-0">Caracteres corruptos: {{ estadoData.esquema.caracteresCorruptos }}</li>
+        </ul>
+      </div>
+      <div class="flex m-y-1"  v-if="estadoGlobal.loadingFile">
+        <p>"Analizando codificación e indizando datos..."</p>
+        <img alt="cargando" src="../../assets/pink-spinner.gif"></img>
       </div>
     </div>
-    <!--<TablaCSV v-if="estadoData.isDataReady" />-->
+    <TablaCSV v-if="estadoData.isDataReady && !archivoInvalido" />
   </div>
 </template>
 <style lang="scss" scoped>
@@ -88,4 +107,5 @@ onMounted(() => {
     width: 100%;
   }
 }
+
 </style>

@@ -21,6 +21,14 @@ export const useDataStore = defineStore("data", () => {
     bloques: {},
   });
 
+  const resetearEsquema = function () {
+    esquema.value.caracteresCorruptos = null;
+    esquema.value.encoding = null;
+    esquema.value.columnas = null;
+    esquema.value.esquemaColumnas = null;
+    esquema.value.totalFilas = null;
+    esquema.value.totalColumnas = null;
+  };
   const updatePath = function (pathString) {
     absolutePath.value = pathString;
   };
@@ -44,7 +52,11 @@ export const useDataStore = defineStore("data", () => {
       filas.value.bloques[filas.value.currentBlock] = rowsBlock;
     }
     const filas_flat = Object.values(filas.value.bloques).flat();
-    filas.value.nthElement = filas_flat[filas_flat.length - nthCount];
+    if (filas_flat.length - nthCount > 0) {
+      filas.value.nthElement = filas_flat[filas_flat.length - nthCount];
+    } else {
+      filas.value.nthElement = filas_flat[filas_flat.length - 1];
+    }
     updateCurrentBlock();
   };
 
@@ -78,6 +90,7 @@ export const useDataStore = defineStore("data", () => {
     isDataReady,
     esquema,
     filas,
+    resetearEsquema,
     updatePath,
     readCSV,
     fetchRows,

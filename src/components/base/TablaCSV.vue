@@ -61,10 +61,18 @@ const fetchNewData = async function (entries, observer) {
 };
 
 onMounted(async () => {
+  console.log("Las filas flat:", filasFlat.value);
+
   observer.value = new IntersectionObserver(fetchNewData, options);
+  console.log("Llegamos al observador");
   target.value = document.querySelector(`.${nthElementClass.value}`);
+  console.log("Pasamos al target");
+
   if (target.value) {
     observer.value.observe(target.value);
+    console.log("El observador funciona");
+  } else {
+    console.log("No hay target");
   }
   //console.log(nthElementClass.value);
 });
@@ -74,8 +82,8 @@ onMounted(async () => {
 });*/
 </script>
 <template>
-  <div>
-    <h2>Vista de los datos</h2>
+  <div class="componente-tabla">
+    <h4>Vista de los datos</h4>
     <p>
       Tipo de columna:
       <span
@@ -103,8 +111,13 @@ onMounted(async () => {
   </div>
 </template>
 <style lang="scss" scoped>
+.componente-tabla {
+  margin-top: 0px;
+  margin-bottom: 30px;
+  height: 90vh;
+}
 .contenedor-tabla {
-  max-width: 95%;
-  max-height: 60vh;
+  max-width: 100%;
+  max-height: 70vh;
 }
 </style>
