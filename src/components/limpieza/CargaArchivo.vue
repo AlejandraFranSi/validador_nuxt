@@ -2,7 +2,7 @@
 import TablaCSV from "../base/TablaCSV.vue";
 import * as d3 from "d3";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, ref, watch, computed, defineEmits } from "vue";
 import { useGlobalStore } from "../../stores/global.js";
 import { useDataStore } from "../../stores/data.js";
 import { invoke } from "@tauri-apps/api/core";
@@ -12,6 +12,7 @@ const estadoData = useDataStore();
 const appWindow = getCurrentWindow();
 const dropZoneText = ref(null);
 const isDataReady = computed(() => estadoData.isDataReady);
+
 
 onMounted(() => {
   dropZoneText.value = estadoData.absolutePath
@@ -44,7 +45,6 @@ onMounted(() => {
       estadoGlobal.actualizarStatusArchivo(
         `Listo: ${estadoData.esquema.totalFilas} filas, ${estadoData.esquema.totalColumnas} columnas`,
       );
-      d3.selectAll("button.tools").property("disabled", false);
     } else {
       // En caso de que al final no se haga nada
       dropZone.classed("dragover", false);
@@ -54,7 +54,7 @@ onMounted(() => {
 </script>
 <template>
   <div>
-    <p>Comienza cargando un archivo.</p>
+    <h4>Comienza cargando un archivo.</h4>
     <div class="flex">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"
@@ -70,7 +70,7 @@ onMounted(() => {
           <p class="columna-12">{{ estadoGlobal.statusArchivo }}</p>
       </div>
     </div>
-    <TablaCSV v-if="estadoData.isDataReady" />
+    <!--<TablaCSV v-if="estadoData.isDataReady" />-->
   </div>
 </template>
 <style lang="scss" scoped>

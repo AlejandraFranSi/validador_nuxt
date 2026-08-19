@@ -6,37 +6,105 @@ import ValidacionColumnas from "./limpieza/ValidacionColumnas.vue";
 import { ref, watch, computed } from "vue";
 import { useGlobalStore } from "../stores/global.js";
 const estadoGlobal = useGlobalStore();
+const isFileLoaded = computed(() =>
+  estadoGlobal.statusArchivo === "Sin archivo cargado" ? false : true,
+);
 </script>
 <template>
-  <h1>Herramientas de limpieza para CSV</h1>
-  <h3>¿Cómo funciona esta herramienta?</h3>
-  <p>
-    Aplica las transformaciones que necesites para que tu base de datos esté más
-    limpia.
-  </p>
-  <div>
-    <button @click="estadoGlobal.actualizarVista('limpieza', 'carga')">
-      Cargar Archivo
-    </button>
-    <button @click="estadoGlobal.actualizarVista('limpieza', 'comparar')">
-      Comparar
-    </button>
-    <button @click="estadoGlobal.actualizarVista('limpieza', 'columnas')">
-      Validación de columnas
-    </button>
-    <button @click="estadoGlobal.actualizarVista('limpieza', 'valores')">
-      Edición de valores
-    </button>
-  </div>
+  <div class="vista-gral m-x-3">
+    <div>
+      <h1>Herramientas de limpieza para CSV</h1>
+      <p>
+        Esta herramienta fue diseñada con el objetivo de facilitar el
+        mejoramiento de las bases de datos. Para ello, la herramienta:
+      </p>
+      <ol>
+        <li>
+          Sugiere nombres que siguen los lineamientos del manual para las
+          columnas que puedes editar
+        </li>
+        <li>
+          Permite aplicar transformaciones a las columnas para corregir
+          características del texto, o transformar el tipo de la columna.
+        </li>
+        <li>
+          Permite analizar las columnas textuales que codifican categorías y
+          modificar sus valores para homologarlos
+        </li>
+      </ol>
+    </div>
 
-  <div>
-    <CargaArchivos v-if="estadoGlobal.subseccionSeleccionada === 'carga'" />
-    <CompararArchivos
-      v-if="estadoGlobal.subseccionSeleccionada === 'comparar'"
-    />
-    <EdicionValores v-if="estadoGlobal.subseccionSeleccionada === 'valores'" />
-    <ValidacionColumnas
-      v-if="estadoGlobal.subseccionSeleccionada === 'columnas'"
-    />
+    .
+    <div class="control-seccion">
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.subseccionSeleccionada === 'carga' ? 'is-selected' : null
+        "
+        @click="estadoGlobal.actualizarVista('limpieza', 'carga')"
+      >
+        Cargar Archivo
+      </button>
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.subseccionSeleccionada === 'comparar'
+            ? 'is-selected'
+            : null
+        "
+        @click="estadoGlobal.actualizarVista('limpieza', 'comparar')"
+        :disabled="!isFileLoaded"
+      >
+        Comparar
+      </button>
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.subseccionSeleccionada === 'columnas'
+            ? 'is-selected'
+            : null
+        "
+        @click="estadoGlobal.actualizarVista('limpieza', 'columnas')"
+        :disabled="!isFileLoaded"
+      >
+        Validación de columnas
+      </button>
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.subseccionSeleccionada === 'valores'
+            ? 'is-selected'
+            : null
+        "
+        @click="estadoGlobal.actualizarVista('limpieza', 'valores')"
+        :disabled="!isFileLoaded"
+      >
+        Edición de valores
+      </button>
+    </div>
+
+    <div>
+      <CargaArchivos v-if="estadoGlobal.subseccionSeleccionada === 'carga'" />
+      <CompararArchivos
+        v-if="estadoGlobal.subseccionSeleccionada === 'comparar'"
+      />
+      <EdicionValores
+        v-if="estadoGlobal.subseccionSeleccionada === 'valores'"
+      />
+      <ValidacionColumnas
+        v-if="estadoGlobal.subseccionSeleccionada === 'columnas'"
+      />
+    </div>
   </div>
 </template>
+<style lang="scss" scoped>
+.control-seccion {
+  width: 100%;
+}
+button {
+  border-radius: 0%;
+}
+.is-selected {
+  border-bottom: solid 5px var(--color-primario-4);
+}
+</style>

@@ -11,11 +11,11 @@ const estadoGlobal = useGlobalStore();
 </script>
 
 <template>
-  <main class="container flex">
-    <div class="columna-3">
+  <main>
+    <div>
       <SideBar />
     </div>
-    <div class="mesa-trabajo columna-13">
+    <div class="mesa-trabajo">
       <RevisionMetadatos
         v-if="estadoGlobal.seccionSeleccionada === 'metadatos'"
       />
@@ -43,16 +43,12 @@ body {
   margin: 0px;
   padding: 0px;
 }
-
-.boton-validacion {
-  background-color: var(--color-primario-3);
-  color: var(--color-secundario-1);
-}
-.boton-archivo {
-  background-color: var(--color-secundario-11);
-  color: var(--color-secundario-1);
-}
-.boton-archivo:disabled {
-  background-color: var(--color-secundario-4);
+.mesa-trabajo {
+  position: absolute;
+  left: 15vw;
+  //top: -64px;
+  width: 85%;
+  margin-top: 0px;
+  padding-top: 0px;
 }
 </style>

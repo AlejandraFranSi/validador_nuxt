@@ -5,7 +5,7 @@ const estadoGlobal = useGlobalStore();
 </script>
 <template>
   <div class="sidebar">
-    <div class="identidad p-2">Herramienta de validacion</div>
+    <div class="identidad p-2 m-t-2">Herramienta de validacion</div>
     <div class="secciones m-t-3">
       <button
         class="boton-chico"
@@ -53,7 +53,6 @@ const estadoGlobal = useGlobalStore();
   min-width: 130px;
 }
 .identidad {
-  background-color: pink;
   height: 15vh;
   display: flex;
   align-items: center;
@@ -61,12 +60,11 @@ const estadoGlobal = useGlobalStore();
   font-weight: bold;
 }
 button {
-  background-color: red;
   width: 100%;
   border-radius: 0%;
-  border-bottom: solid 1px green;
+  border-bottom: solid 1px var(--color-primario-4);
 }
 .is-selected {
-  border-left: solid 3px green;
+  border-left: solid 5px var(--color-primario-4);
 }
 </style>
