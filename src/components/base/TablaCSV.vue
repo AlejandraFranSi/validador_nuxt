@@ -92,7 +92,7 @@ watch(nthFirstElementClass, async (nv) => {
     </p>
     <div class="contenedor-tabla">
       <table>
-        <thead>
+        <thead class="header-tabla">
           <tr>
             <th v-for="columna in columnas">
               {{ columna }}
@@ -117,5 +117,16 @@ watch(nthFirstElementClass, async (nv) => {
 .contenedor-tabla {
   max-width: 100%;
   max-height: 70vh;
+  overflow-y: auto;
+  table {
+    display: inline-block;
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background-color: var(--color-neutro-1);
+    }
+  }
 }
 </style>
