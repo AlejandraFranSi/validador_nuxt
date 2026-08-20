@@ -46,7 +46,6 @@ const fetchNextRows = async function (entries, observer) {
 const fetchPreviousRows = async function (entries) {
   if (entries[0].isIntersecting) {
     await estadoData.fetchPreviousRows();
-    console.log("El enésimo elemento es:", estadoData.filas.nthFirstElement);
   }
 };
 
@@ -72,7 +71,6 @@ onMounted(async () => {
 });
 
 watch(nthFirstElementClass, async (nv) => {
-  console.log(nv);
   observerFirst.value.unobserve(targetFirst.value);
   await nextTick();
   targetFirst.value = document.querySelector(`.${nthFirstElementClass.value}`);

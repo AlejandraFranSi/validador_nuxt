@@ -38,6 +38,10 @@ export const useDataStore = defineStore("data", () => {
     esquema.value.totalColumnas = null;
   };
 
+  /**
+   * Esta función se encarga de pedir las filas del bloque siguiente
+   * y se asegura que no se tengan más bloques de filas que los señalados
+   */
   const fetchNextRows = async function () {
     // Revisamos si ya existe el key-value pair con el indice indicado
     // y que no sea un array vacío
@@ -77,7 +81,6 @@ export const useDataStore = defineStore("data", () => {
 
       // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
       if (blocksInMemmory < fetchedBlocks.length) {
-        console.log("Eliminamos un bloque");
         const elementToDelete = fetchedBlocks[0];
         filas.value.bloques[elementToDelete] = filas.value.bloques[
           elementToDelete
@@ -86,22 +89,19 @@ export const useDataStore = defineStore("data", () => {
         filas.value.firstBlock = fetchedBlocks[1];
         filas.value.nthFirstElement =
           filas.value.bloques[filas.value.firstBlock][nthCount];
-
-        console.log(
-          "Se pidieron datos nuevos, el primer enésimo elemento es:",
-          filas.value.nthFirstElement,
-        );
       } else {
         filas.value.nthFirstElement = filas_flat[nthCount];
       }
-    } else {
-      return;
     }
   };
 
+  /**
+   * Esta función se encarga de pedir las filas del bloque anterior
+   * y se asegura que no se tengan más bloques de filas que los señalados
+   */
   const fetchPreviousRows = async function () {
+    // Solo pedimos el bloque anterior cuando no estamos en el primer bloque
     if (filas.value.firstBlock - 1 > 0) {
-      console.log("Pedimos más datos");
       filas.value.firstBlock -= 1;
       const prevRows = await invoke("fetch_rows", {
         startIndex: filas.value.firstBlock,
@@ -111,16 +111,27 @@ export const useDataStore = defineStore("data", () => {
         (d, index) =>
           (d.indice = (filas.value.firstBlock - 1) * blockSize + index),
       );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
       filas.value.bloques[filas.value.firstBlock] = prevRows;
+      filas.value.bloqueConData[filas.value.firstBlock] = true;
       filas.value.nthFirstElement =
         filas.value.bloques[filas.value.firstBlock][nthCount];
-      console.log(
-        "Se pidieron columnas anteriores, el nuevo enésimo elemento es:",
-        filas.value.nthFirstElement,
-      );
-    } else {
-      console.log("No pedimos nada");
+
+      // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
+      let fetchedBlocks = Object.keys(filas.value.bloqueConData)
+        .filter((n) => filas.value.bloqueConData[n])
+        .map((n) => Number(n))
+        .sort((a, b) => a - b);
+
+      if (blocksInMemmory < fetchedBlocks.length) {
+        const elementToDelete = fetchedBlocks[fetchedBlocks.length - 1];
+        filas.value.bloques[elementToDelete] = filas.value.bloques[
+          elementToDelete
+        ].map((element) => (element = {}));
+        filas.value.bloqueConData[elementToDelete] = false;
+        filas.value.lastBlock = [fetchedBlocks.length - 2];
+        filas.value.nthLastElement =
+          filas.value.bloques[filas.value.lastBlock][blockSize - nthCount];
+      }
     }
   };
   /**
