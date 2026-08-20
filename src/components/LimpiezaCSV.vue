@@ -12,32 +12,9 @@ const isFileLoaded = computed(() =>
 </script>
 <template>
   <div class="vista-gral m-x-3">
-    <div>
-      <h1>Herramientas de limpieza para CSV</h1>
-      <p class="m-1">
-        Esta herramienta fue diseñada con el objetivo de facilitar el
-        mejoramiento de las bases de datos. Para ello, la herramienta:
-      </p>
-      <ol>
-        <li class="m-1">
-          Sugiere nombres que siguen los lineamientos del manual para las
-          columnas que puedes editar
-        </li>
-        <li class="m-1">
-          Permite aplicar transformaciones a las columnas para corregir
-          características del texto, o transformar el tipo de la columna.
-        </li>
-        <li class="m-1">
-          Permite analizar las columnas textuales que codifican categorías y
-          modificar sus valores para homologarlos
-        </li>
-      </ol>
-    </div>
-
-    .
-    <div class="control-seccion">
+    <h1 class="m-y-3">Herramientas de limpieza para CSV</h1>
+    <div class="control-seccion m-y-1">
       <button
-        class="boton-chico"
         :class="
           estadoGlobal.subseccionSeleccionada === 'carga' ? 'is-selected' : null
         "
@@ -45,7 +22,7 @@ const isFileLoaded = computed(() =>
       >
         Cargar Archivo
       </button>
-      <button
+      <!--<button
         class="boton-chico"
         :class="
           estadoGlobal.subseccionSeleccionada === 'comparar'
@@ -56,9 +33,8 @@ const isFileLoaded = computed(() =>
         :disabled="!isFileLoaded"
       >
         Comparar
-      </button>
+      </button> -->
       <button
-        class="boton-chico"
         :class="
           estadoGlobal.subseccionSeleccionada === 'columnas'
             ? 'is-selected'
@@ -70,7 +46,6 @@ const isFileLoaded = computed(() =>
         Validación de columnas
       </button>
       <button
-        class="boton-chico"
         :class="
           estadoGlobal.subseccionSeleccionada === 'valores'
             ? 'is-selected'

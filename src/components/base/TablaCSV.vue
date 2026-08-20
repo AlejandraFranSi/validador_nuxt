@@ -37,20 +37,13 @@ const typeDict = {
 
 const fetchNewData = async function (entries, observer) {
   if (entries[0].isIntersecting && !isFetchingData.value) {
-    console.log("Hay intersección y podemos pedir datos");
     if (estadoData.esquema.totalFilas > filasFlat.value.length) {
-      console.log("Se piden más datos");
       isFetchingData.value = true;
       observer.unobserve(target.value);
       await estadoData.fetchRows();
       isFetchingData.value = false;
       await nextTick();
-      console.log(
-        "La clase del enésimo nuevo elemento:",
-        nthElementClass.value,
-      );
       target.value = document.querySelector(`.${nthElementClass.value}`);
-      console.log("El nuevo target: ", target.value);
       if (target.value) {
         observer.observe(target.value);
       }
@@ -61,19 +54,13 @@ const fetchNewData = async function (entries, observer) {
 };
 
 onMounted(async () => {
-  console.log("Las filas flat:", filasFlat.value);
-
   observer.value = new IntersectionObserver(fetchNewData, options);
-  console.log("Llegamos al observador");
   target.value = document.querySelector(`.${nthElementClass.value}`);
-  console.log("Pasamos al target");
 
   if (target.value) {
     observer.value.observe(target.value);
-    console.log("El observador funciona");
-  } else {
-    console.log("No hay target");
   }
+
   //console.log(nthElementClass.value);
 });
 

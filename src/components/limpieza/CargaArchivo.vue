@@ -61,7 +61,27 @@ onMounted(() => {
 </script>
 <template>
   <div>
-    <h4>Comienza cargando un archivo</h4>
+        <div>
+      <p class="m-1">
+        Esta herramienta fue diseñada con el objetivo de facilitar el
+        mejoramiento de las bases de datos. Para ello, la herramienta:
+      </p>
+      <ol>
+        <li class="m-1">
+          Sugiere nombres que siguen los lineamientos del manual para las
+          columnas que puedes editar
+        </li>
+        <li class="m-1">
+          Permite aplicar transformaciones a las columnas para corregir
+          características del texto, o transformar el tipo de la columna.
+        </li>
+        <li class="m-1">
+          Permite analizar las columnas textuales que codifican categorías y
+          modificar sus valores para homologarlos
+        </li>
+      </ol>
+        <h4>Comienza cargando un archivo</h4>
+    </div>
     <div class="flex flex-contenido-centrado">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"

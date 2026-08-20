@@ -42,6 +42,7 @@ body[data-perfil="predeterminada"],
 body {
   margin: 0px;
   padding: 0px;
+  font-size: 14px;
 }
 .mesa-trabajo {
   position: absolute;
