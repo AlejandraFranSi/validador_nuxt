@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useDataStore } from "../../stores/data.js";
 
 const estadoData = useDataStore();
@@ -9,8 +9,13 @@ const filasFlat = computed(() => Object.values(filas.value).flat());
 const nthLastElementClass = computed(
   () => `fila-${estadoData.filas.nthLastElement.indice}`,
 );
-const target = ref(null);
+const nthFirstElementClass = computed(
+  () => `fila-${estadoData.filas.nthFirstElement?.indice}`,
+);
+const targetLast = ref(null);
+const targetFirst = ref(null);
 const observerLast = ref(null);
+const observerFirst = ref(null);
 const isFetchingData = ref(false);
 const typeDict = {
   Fecha: "#EE4266",
@@ -22,17 +27,25 @@ const fetchNextRows = async function (entries, observer) {
   if (entries[0].isIntersecting && !isFetchingData.value) {
     if (estadoData.esquema.totalFilas > filasFlat.value.length) {
       isFetchingData.value = true;
-      observer.unobserve(target.value);
+      observer.unobserve(targetLast.value);
       await estadoData.fetchNextRows();
       isFetchingData.value = false;
       await nextTick();
-      target.value = document.querySelector(`.${nthLastElementClass.value}`);
-      if (target.value) {
-        observer.observe(target.value);
+      targetLast.value = document.querySelector(
+        `.${nthLastElementClass.value}`,
+      );
+      if (targetLast.value) {
+        observer.observe(targetLast.value);
       }
     } else {
-      observer.unobserve(target.value);
+      observer.unobserve(targetLast.value);
     }
+  }
+};
+
+const fetchPreviousRows = async function (entries, observer) {
+  if (entries[0].isIntersecting) {
+    console.log("El enésimo elemento es:", estadoData.filas.nthFirstElement);
   }
 };
 
@@ -44,10 +57,26 @@ onMounted(async () => {
     threshold: 0.1,
   };
   observerLast.value = new IntersectionObserver(fetchNextRows, options);
-  target.value = document.querySelector(`.${nthLastElementClass.value}`);
+  observerFirst.value = new IntersectionObserver(fetchPreviousRows, options);
+  targetLast.value = document.querySelector(`.${nthLastElementClass.value}`);
+  targetFirst.value = document.querySelector(`.${nthFirstElementClass.value}`);
 
-  if (target.value) {
-    observerLast.value.observe(target.value);
+  if (targetLast.value) {
+    observerLast.value.observe(targetLast.value);
+  }
+
+  if (targetFirst.value) {
+    observerFirst.value.observe(targetFirst.value);
+  }
+});
+
+watch(nthFirstElementClass, async (nv) => {
+  console.log(nv);
+  observerFirst.value.unobserve(targetFirst.value);
+  await nextTick();
+  targetFirst.value = document.querySelector(`.${nthFirstElementClass.value}`);
+  if (targetFirst.value) {
+    observerFirst.value.observe(targetFirst.value);
   }
 });
 </script>

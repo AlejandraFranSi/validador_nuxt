@@ -6,8 +6,8 @@ export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
   const blocksInMemmory = 3;
-  const blockSize = 30;
-  const nthCount = 10; // El nthcount debe ser siempre más pequeño que el block size
+  const blockSize = 20;
+  const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
   const esquema = ref({
     caracteresCorruptos: null,
     encoding: null,
@@ -77,6 +77,7 @@ export const useDataStore = defineStore("data", () => {
 
       // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
       if (blocksInMemmory < fetchedBlocks.length) {
+        console.log("Eliminamos un bloque");
         const elementToDelete = fetchedBlocks[0];
         filas.value.bloques[elementToDelete] = filas.value.bloques[
           elementToDelete
@@ -84,13 +85,40 @@ export const useDataStore = defineStore("data", () => {
         filas.value.bloqueConData[elementToDelete] = false;
         filas.value.firstBlock = fetchedBlocks[1];
         filas.value.nthFirstElement =
-          filas.value.bloques[filas.value.firstBlock][blockSize - nthCount];
+          filas.value.bloques[filas.value.firstBlock][nthCount];
+
+        console.log(
+          "Se pidieron datos nuevos, el primer enésimo elemento es:",
+          filas.value.nthFirstElement,
+        );
+      } else {
+        filas.value.nthFirstElement = filas_flat[nthCount];
       }
     } else {
       return;
     }
   };
 
+  const fetchPreviousRows = async function () {
+    if (filas.value.firstBlock - 1 > 0) {
+      console.log("Pedimos más datos");
+      filas.value.firstBlock -= 1;
+      const prevRows = await invoke("fetch_rows", {
+        startIndex: filas.value.firstBlock,
+        blockSize: blockSize,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      filas.value.bloques[filas.value.firstBlock] = prevRows;
+      filas.value.nthFirstElement =
+        filas.value.bloques[filas.value.firstBlock][nthCount];
+      console.log(
+        "Se pidieron columnas anteriores, el nuevo enésimo elemento es:",
+        filas.value.nthFirstElement,
+      );
+    } else {
+      console.log("No pedimos nada");
+    }
+  };
   /**
    * Esta función resetea la información de archivo cada vez que se carga
    * uno nuevo, actualiza el esquema de los datos y también pide el primer
@@ -123,5 +151,6 @@ export const useDataStore = defineStore("data", () => {
     updatePath,
     readCSV,
     fetchNextRows,
+    fetchPreviousRows,
   };
 });
