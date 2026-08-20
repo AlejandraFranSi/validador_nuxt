@@ -107,6 +107,10 @@ export const useDataStore = defineStore("data", () => {
         startIndex: filas.value.firstBlock,
         blockSize: blockSize,
       });
+      prevRows.forEach(
+        (d, index) =>
+          (d.indice = (filas.value.firstBlock - 1) * blockSize + index),
+      );
       await new Promise((resolve) => setTimeout(resolve, 5000));
       filas.value.bloques[filas.value.firstBlock] = prevRows;
       filas.value.nthFirstElement =
