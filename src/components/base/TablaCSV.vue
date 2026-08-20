@@ -10,7 +10,7 @@ const nthLastElementClass = computed(
   () => `fila-${estadoData.filas.nthLastElement.indice}`,
 );
 const target = ref(null);
-const observer = ref(null);
+const observerLast = ref(null);
 const isFetchingData = ref(false);
 const typeDict = {
   Fecha: "#EE4266",
@@ -43,11 +43,11 @@ onMounted(async () => {
     scrollMargin: "0px",
     threshold: 0.1,
   };
-  observer.value = new IntersectionObserver(fetchNextRows, options);
+  observerLast.value = new IntersectionObserver(fetchNextRows, options);
   target.value = document.querySelector(`.${nthLastElementClass.value}`);
 
   if (target.value) {
-    observer.value.observe(target.value);
+    observerLast.value.observe(target.value);
   }
 });
 </script>
