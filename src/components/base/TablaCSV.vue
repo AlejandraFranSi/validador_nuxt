@@ -1,26 +1,16 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useDataStore } from "../../stores/data.js";
 
 const estadoData = useDataStore();
 const columnas = computed(() => estadoData.esquema.columnas);
 const filas = computed(() => estadoData.filas.bloques);
-const nthElement = computed(() => estadoData.filas.nthElement);
-const nthElementClass = computed(
-  () => `fila-${estadoData.filas.nthElement.indice}`,
+const filasFlat = computed(() => Object.values(filas.value).flat());
+const nthLastElementClass = computed(
+  () => `fila-${estadoData.filas.nthLastElement.indice}`,
 );
 const target = ref(null);
 const observer = ref(null);
-const options = {
-  root: null,
-  rootMargin: "0px",
-  scrollMargin: "0px",
-  threshold: 0.1,
-};
-
-const filasFlat = computed(() =>
-  Object.values(estadoData.filas.bloques).flat(),
-);
 const isFetchingData = ref(false);
 const typeDict = {
   Fecha: "#EE4266",
@@ -28,22 +18,15 @@ const typeDict = {
   Texto: "#2BB4DE",
 };
 
-/*function setColor(columnName) {
-  let option = estadoData.esquema.esquemaColumnas.filter(
-    (col) => col.nombre === columnName,
-  )[0];
-  return typeDict[option.tipo];
-}*/
-
-const fetchNewData = async function (entries, observer) {
+const fetchNextRows = async function (entries, observer) {
   if (entries[0].isIntersecting && !isFetchingData.value) {
     if (estadoData.esquema.totalFilas > filasFlat.value.length) {
       isFetchingData.value = true;
       observer.unobserve(target.value);
-      await estadoData.fetchRows();
+      await estadoData.fetchNextRows();
       isFetchingData.value = false;
       await nextTick();
-      target.value = document.querySelector(`.${nthElementClass.value}`);
+      target.value = document.querySelector(`.${nthLastElementClass.value}`);
       if (target.value) {
         observer.observe(target.value);
       }
@@ -54,19 +37,19 @@ const fetchNewData = async function (entries, observer) {
 };
 
 onMounted(async () => {
-  observer.value = new IntersectionObserver(fetchNewData, options);
-  target.value = document.querySelector(`.${nthElementClass.value}`);
+  const options = {
+    root: null,
+    rootMargin: "0px",
+    scrollMargin: "0px",
+    threshold: 0.1,
+  };
+  observer.value = new IntersectionObserver(fetchNextRows, options);
+  target.value = document.querySelector(`.${nthLastElementClass.value}`);
 
   if (target.value) {
     observer.value.observe(target.value);
   }
-
-  //console.log(nthElementClass.value);
 });
-
-/*watch(filasFlat, async () => {
-  //observer.observe(target.value);
-});*/
 </script>
 <template>
   <div class="componente-tabla">

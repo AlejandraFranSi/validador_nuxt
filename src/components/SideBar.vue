@@ -1,5 +1,4 @@
 <script setup>
-import { ref, watch, computed } from "vue";
 import { useGlobalStore } from "../stores/global.js";
 const estadoGlobal = useGlobalStore();
 </script>

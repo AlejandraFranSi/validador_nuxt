@@ -3,9 +3,7 @@ import LimpiezaCSV from "./components/LimpiezaCSV.vue";
 import ConfiguracionDiccionarios from "./components/ConfiguracionDiccionarios.vue";
 import RevisionMetadatos from "./components/RevisionMetadatos.vue";
 import SideBar from "./components/SideBar.vue";
-import { ref, watch } from "vue";
 import { useGlobalStore } from "./stores/global.js";
-//import { invoke } from "@tauri-apps/api/core";
 
 const estadoGlobal = useGlobalStore();
 </script>
@@ -67,6 +65,7 @@ body {
   position: absolute;
   left: 15vw;
   width: 85%;
+  height: calc(100vh + 100px);
   margin-top: 0px;
   padding-top: 0px;
 }

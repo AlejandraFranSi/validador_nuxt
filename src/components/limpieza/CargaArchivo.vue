@@ -5,10 +5,10 @@ import TarjetaError from "../base/TarjetaError.vue";
 import TarjetaConfirmacion from "../base/TarjetaConfirmacion.vue";
 import TarjetaAlerta from "../base/TarjetaAlerta.vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onMounted, ref, watch, computed} from "vue";
+import { onMounted, ref, computed} from "vue";
 import { useGlobalStore } from "../../stores/global.js";
 import { useDataStore } from "../../stores/data.js";
-import { invoke } from "@tauri-apps/api/core";
+//import { invoke } from "@tauri-apps/api/core";
 
 const estadoGlobal = useGlobalStore();
 const estadoData = useDataStore();
@@ -44,7 +44,6 @@ onMounted(() => {
       dropZoneText.value = `Archivo actual: ${estadoData.absolutePath}`;
       estadoGlobal.setLoadingFile(true);
       await estadoData.readCSV();
-      console.log("Aqui", estadoData.esquema);
       estadoData.esquema.caracteresCorruptos.map((d) => {
         if(d.caracter.trim().length > 0) {
           listaCaracteresCorruptos.value.push(d.caracter)}

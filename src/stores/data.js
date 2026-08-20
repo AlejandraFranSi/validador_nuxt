@@ -5,7 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
-  const nthCount = 30;
+  const blocksInMemmory = 3;
+  const blockSize = 30;
+  const nthCount = 10; // El nthcount debe ser siempre más pequeño que el block size
   const esquema = ref({
     caracteresCorruptos: null,
     encoding: null,
@@ -15,11 +17,17 @@ export const useDataStore = defineStore("data", () => {
     totalColumnas: null,
   });
   const filas = ref({
-    currentBlock: 1,
-    blockSize: 100,
-    nthElement: null,
+    lastBlock: 1,
+    firstBlock: 1,
+    nthLastElement: null,
+    nthFirstElement: null,
     bloques: {},
+    bloqueConData: {},
   });
+
+  const updatePath = function (pathString) {
+    absolutePath.value = pathString;
+  };
 
   const resetearEsquema = function () {
     esquema.value.caracteresCorruptos = null;
@@ -29,59 +37,80 @@ export const useDataStore = defineStore("data", () => {
     esquema.value.totalFilas = null;
     esquema.value.totalColumnas = null;
   };
-  const updatePath = function (pathString) {
-    absolutePath.value = pathString;
-  };
 
-  const updateCurrentBlock = function () {
-    filas.value.currentBlock++;
-  };
+  const fetchNextRows = async function () {
+    // Revisamos si ya existe el key-value pair con el indice indicado
+    // y que no sea un array vacío
+    const currentIndex = filas.value.lastBlock;
+    let fetchedBlocks = Object.keys(filas.value.bloqueConData)
+      .filter((n) => filas.value.bloqueConData[n])
+      .map((n) => Number(n));
 
-  const fetchRows = async function () {
-    const rowsBlock = await invoke("fetch_rows", {
-      startIndex: filas.value.currentBlock,
-      blockSize: filas.value.blockSize,
-    });
+    // Si el indice no existe o es un array vacío,
+    // Pedimos los datos para generar un nuevo bloque de key-values
+    // y a cada fila le agregamos un indice
+    if (!fetchedBlocks.includes(currentIndex)) {
+      const newRows = await invoke("fetch_rows", {
+        startIndex: filas.value.lastBlock,
+        blockSize: blockSize,
+      });
 
-    if (!Object.keys(filas.value.bloques).includes(filas.value.currentBlock)) {
-      rowsBlock.forEach(
+      newRows.forEach(
         (d, index) =>
-          (d.indice =
-            (filas.value.currentBlock - 1) * filas.value.blockSize + index),
+          (d.indice = (filas.value.lastBlock - 1) * blockSize + index),
       );
-      filas.value.bloques[filas.value.currentBlock] = rowsBlock;
-    }
-    const filas_flat = Object.values(filas.value.bloques).flat();
-    if (filas_flat.length - nthCount > 0) {
-      filas.value.nthElement = filas_flat[filas_flat.length - nthCount];
+
+      //Actualizamos la data de la store
+      filas.value.bloques[currentIndex] = newRows;
+      filas.value.bloqueConData[currentIndex] = true;
+      fetchedBlocks.push(currentIndex);
+      fetchedBlocks = fetchedBlocks.sort((a, b) => a - b);
+
+      // Señalamos el nuevo último elemento
+      const filas_flat = Object.values(filas.value.bloques).flat();
+      if (filas_flat.length - nthCount > 0) {
+        filas.value.nthLastElement = filas_flat[filas_flat.length - nthCount];
+      } else {
+        filas.value.nthLastElement = filas_flat[filas_flat.length - 1];
+      }
+      filas.value.lastBlock++;
+
+      // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
+      if (blocksInMemmory < fetchedBlocks.length) {
+        const elementToDelete = fetchedBlocks[0];
+        filas.value.bloques[elementToDelete] = filas.value.bloques[
+          elementToDelete
+        ].map((element) => (element = {}));
+        filas.value.bloqueConData[elementToDelete] = false;
+        filas.value.firstBlock = fetchedBlocks[1];
+        filas.value.nthFirstElement =
+          filas.value.bloques[filas.value.firstBlock][blockSize - nthCount];
+      }
     } else {
-      filas.value.nthElement = filas_flat[filas_flat.length - 1];
+      return;
     }
-    updateCurrentBlock();
   };
 
+  /**
+   * Esta función resetea la información de archivo cada vez que se carga
+   * uno nuevo, actualiza el esquema de los datos y también pide el primer
+   * bloque de filas
+   */
   const readCSV = async function () {
     isDataReady.value = false;
-    // Cada que cargamos un archivo nuevo, reseteamos las filas
-    filas.value.currentBlock = 1;
-    filas.value.nthElement = null;
+    filas.value.lastBlock = 1;
+    filas.value.nthLastElement = null;
     filas.value.bloques = {};
-
-    // Solicitamos el esquema de los datos
     const data_csv = await invoke("leer_csv", {
       rutaFront: absolutePath.value,
     });
-    // Actualizamos la variable del esquema de los datos
     esquema.value.encoding = data_csv.encoding_aplicado;
     esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
     esquema.value.totalFilas = data_csv.total_filas;
     esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
     esquema.value.totalColumnas = esquema.value.columnas.length;
     esquema.value.esquemaColumnas = data_csv.esquema_columnas;
-
-    // Vamos a pedir el primer bloque de columnas
-    await fetchRows();
-    // Actualizamos el estado de los datos
+    await fetchNextRows();
     isDataReady.value = true;
   };
 
@@ -93,6 +122,6 @@ export const useDataStore = defineStore("data", () => {
     resetearEsquema,
     updatePath,
     readCSV,
-    fetchRows,
+    fetchNextRows,
   };
 });
