@@ -61,7 +61,7 @@ onMounted(() => {
 </script>
 <template>
   <div>
-        <div>
+    <div>
       <p class="m-1">
         Esta herramienta fue diseñada con el objetivo de facilitar el
         mejoramiento de las bases de datos. Para ello, la herramienta:

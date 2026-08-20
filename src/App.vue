@@ -38,11 +38,30 @@ body[data-perfil="predeterminada"],
   --color-neutro-2: #c9cfcf;
   --color-neutro-1: #eaecec;
   --color-neutro-0: #ffffff;
+
+  /*--color-secundario-1: #fffcf4ff;
+  --color-secundario-2: #e5e6d5ff;
+  --color-secundario-3: #cad6c6ff;
+  --color-secundario-4: #b1c6b8ff;
+  --color-secundario-5: #9bb9acff;
+  --color-secundario-6: #83ab9eff;
+  --color-secundario-7: #74a196ff;
+  --color-secundario-8: #5b9089ff;
+  --color-secundario-9: #588e87ff;
+  --color-secundario-10: #3f7f7bff;
+  --color-secundario-11: #1e6b68ff;
+  --color-secundario-12: #065a5aff;
+
+  --color-primario-1: #2cb4b4ff;
+  --color-primario-2: #229496;
+  --color-primario-3: #fb5d01ff;
+  --color-primario-4: #ff711f;*/
 }
 body {
   margin: 0px;
   padding: 0px;
   font-size: 14px;
+  background-color: var(--color-neutro-0);
 }
 .mesa-trabajo {
   position: absolute;

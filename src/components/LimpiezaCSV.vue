@@ -11,9 +11,9 @@ const isFileLoaded = computed(() =>
 );
 </script>
 <template>
-  <div class="vista-gral m-x-3">
-    <h1 class="m-y-3">Herramientas de limpieza para CSV</h1>
-    <div class="control-seccion m-y-1">
+  <div class="vista-gral">
+    <h1 class="m-y-3 m-x-3">Limpieza para CSV</h1>
+    <div class="control-seccion m-y-1 p-x-3">
       <button
         :class="
           estadoGlobal.subseccionSeleccionada === 'carga' ? 'is-selected' : null
@@ -58,7 +58,7 @@ const isFileLoaded = computed(() =>
       </button>
     </div>
 
-    <div>
+    <div class="m-x-3">
       <CargaArchivos v-if="estadoGlobal.subseccionSeleccionada === 'carga'" />
       <CompararArchivos
         v-if="estadoGlobal.subseccionSeleccionada === 'comparar'"
@@ -75,9 +75,15 @@ const isFileLoaded = computed(() =>
 <style lang="scss" scoped>
 .control-seccion {
   width: 100%;
+  background-color: var(--color-secundario-3);
 }
 button {
   border-radius: 0%;
+  background-color: var(--color-secundario-3);
+}
+
+button:disabled {
+  background-color: var(--color-secundario-2);
 }
 .is-selected {
   border-bottom: solid 5px var(--color-primario-4);
