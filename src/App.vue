@@ -26,8 +26,12 @@ const estadoGlobal = useGlobalStore();
 </template>
 
 <style lang="scss">
+@import url("https://fonts.googleapis.com/css2?family=Bevan:ital@0;1&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
+
 body[data-perfil="predeterminada"],
 :root {
+  --tipografia-familia: "Nunito", sans-serif;
+  --tipografia-tamanio: 16px;
   --color-neutro-7: #131415;
   --color-neutro-6: #2a2b2e;
   --color-neutro-5: #44474b;
@@ -37,28 +41,33 @@ body[data-perfil="predeterminada"],
   --color-neutro-1: #eaecec;
   --color-neutro-0: #ffffff;
 
-  /*--color-secundario-1: #fffcf4ff;
-  --color-secundario-2: #e5e6d5ff;
-  --color-secundario-3: #cad6c6ff;
-  --color-secundario-4: #b1c6b8ff;
-  --color-secundario-5: #9bb9acff;
-  --color-secundario-6: #83ab9eff;
-  --color-secundario-7: #74a196ff;
-  --color-secundario-8: #5b9089ff;
-  --color-secundario-9: #588e87ff;
-  --color-secundario-10: #3f7f7bff;
-  --color-secundario-11: #1e6b68ff;
-  --color-secundario-12: #065a5aff;
+  --color-secundario-1: #edf9fcff;
+  --color-secundario-2: #ddedf3ff;
+  --color-secundario-3: #cee3eaff;
+  --color-secundario-4: #bad4e0ff;
+  --color-secundario-5: #a4c5d4ff;
+  --color-secundario-6: #8bb3c7ff;
+  --color-secundario-7: #7aa6beff;
+  --color-secundario-8: #6496b3ff;
+  --color-secundario-9: #5389a9ff;
+  --color-secundario-10: #357399ff;
+  --color-secundario-11: #1b5c89ff;
+  --color-secundario-12: #003e68ff;
 
-  --color-primario-1: #2cb4b4ff;
-  --color-primario-2: #229496;
-  --color-primario-3: #fb5d01ff;
-  --color-primario-4: #ff711f;*/
+  /*
+  --color-primario-4: #2cb4b4ff;
+  --color-primario-3: #229496;
+  --color-primario-1: #fb5d01ff;
+  --color-primario-2: #ea7a25;
+  */
+  --color-primario-3: #e83151;
+  --color-primario-4: #f391a1;
+  --color-primario-1: #d8f6b7;
+  --color-primario-2: #b2ec6f;
 }
 body {
   margin: 0px;
   padding: 0px;
-  font-size: 14px;
   background-color: var(--color-neutro-0);
 }
 .mesa-trabajo {

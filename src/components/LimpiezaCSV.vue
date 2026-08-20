@@ -81,12 +81,14 @@ const isFileLoaded = computed(() =>
 button {
   border-radius: 0%;
   background-color: var(--color-secundario-3);
+  border-left: solid 1px var(--color-secundario-5);
+  border-right: solid 1px var(--color-secundario-5);
 }
 
 button:disabled {
   background-color: var(--color-secundario-2);
 }
 .is-selected {
-  border-bottom: solid 5px var(--color-primario-4);
+  border-bottom: solid 5px var(--color-primario-3);
 }
 </style>

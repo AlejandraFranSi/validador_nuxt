@@ -67,14 +67,14 @@ button {
   color: var(--color-neutro-1);
   width: 100%;
   border-radius: 0%;
-  border-bottom: solid 1px var(--color-primario-1);
+  border-bottom: solid 1px var(--color-primario-4);
   text-align: left;
 }
 button:hover {
   background-color: var(--color-secundario-9);
 }
 .is-selected {
-  border-left: solid 5px var(--color-primario-1);
+  border-left: solid 5px var(--color-primario-4);
 }
 
 @media (max-width: 800px) {
