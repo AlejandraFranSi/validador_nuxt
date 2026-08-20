@@ -3,8 +3,9 @@ import CargaArchivos from "./limpieza/CargaArchivo.vue";
 import CompararArchivos from "./limpieza/CompararArchivos.vue";
 import EdicionValores from "./limpieza/EdicionValores.vue";
 import ValidacionColumnas from "./limpieza/ValidacionColumnas.vue";
-import { ref, watch, computed } from "vue";
+import { computed } from "vue";
 import { useGlobalStore } from "../stores/global.js";
+
 const estadoGlobal = useGlobalStore();
 const isFileLoaded = computed(() =>
   estadoGlobal.statusArchivo === "Sin archivo cargado" ? false : true,

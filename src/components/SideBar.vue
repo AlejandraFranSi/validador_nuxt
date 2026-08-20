@@ -6,7 +6,7 @@ const estadoGlobal = useGlobalStore();
 <template>
   <div class="sidebar">
     <div class="identidad p-2 m-y-7">
-      <h3>Herramienta de validación</h3>
+      <p>Herramienta de validación</p>
     </div>
     <div class="secciones m-t-3">
       <button
@@ -60,6 +60,8 @@ const estadoGlobal = useGlobalStore();
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  font-size: 18px;
+  text-align: center;
 }
 button {
   background-color: var(--color-secundario-12);
@@ -67,6 +69,7 @@ button {
   width: 100%;
   border-radius: 0%;
   border-bottom: solid 1px var(--color-primario-1);
+  text-align: left;
 }
 button:hover {
   background-color: var(--color-secundario-9);

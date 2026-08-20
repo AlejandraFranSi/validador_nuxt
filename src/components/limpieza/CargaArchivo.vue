@@ -1,20 +1,22 @@
 <script setup>
-import TablaCSV from "../base/TablaCSV.vue";
-import Errores from "../base/Errores.vue";
 import * as d3 from "d3";
+import TablaCSV from "../base/TablaCSV.vue";
+import TarjetaError from "../base/TarjetaError.vue";
+import TarjetaConfirmacion from "../base/TarjetaConfirmacion.vue";
+import TarjetaAlerta from "../base/TarjetaAlerta.vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { onMounted, ref, watch, computed, defineEmits } from "vue";
+import { onMounted, ref, watch, computed} from "vue";
 import { useGlobalStore } from "../../stores/global.js";
 import { useDataStore } from "../../stores/data.js";
 import { invoke } from "@tauri-apps/api/core";
-// const invoke = window.__TAURI__.core.invoke;
+
 const estadoGlobal = useGlobalStore();
 const estadoData = useDataStore();
 const appWindow = getCurrentWindow();
 const dropZoneText = ref(null);
 const isDataReady = computed(() => estadoData.isDataReady);
 const archivoInvalido = ref(false);
-
+const listaCaracteresCorruptos = ref([])
 
 onMounted(() => {
   dropZoneText.value = estadoData.absolutePath
@@ -26,32 +28,29 @@ onMounted(() => {
       // Cuando aún no se suelta el archivo
       dropZone.classed("dragover", true);
     } else if (event.payload.type === "drop") {
-      //Cada vez que cargamos un archivo, reseteamos la info
-      estadoData.resetearEsquema();
+      // Al soltar el archivo y reseteamos la data store
+      dropZoneText.value = ``;
       estadoGlobal.actualizarStatusArchivo("Sin archivo cargado");
-      // Al soltar el archivo
+      estadoData.resetearEsquema();
       archivoInvalido.value = false;
       estadoData.updatePath(event.payload.paths[0]);
       dropZone.classed("dragover", false);
       // Validamos que el archivo efectivamente sea un csv
       if (!estadoData.absolutePath.toLowerCase().endsWith(".csv")) {
-        //alert("El archivo debe tener formato CSV.");
         archivoInvalido.value = true;
         return;
       }
-      // En caso de que sí sea un csv, actualizamos la interfaz
+      // En caso de que sí sea un csv, actualizamos la interfaz y los datos
       dropZoneText.value = `Archivo actual: ${estadoData.absolutePath}`;
-      estadoGlobal.actualizarStatusArchivo(
-        "Analizando codificación e indizando datos...",
-      );
       estadoGlobal.setLoadingFile(true);
-      // Leemos el archivo y mostramos la tabla
-      const prueba = await estadoData.readCSV();
-      // Actualizamos el estatus
+      await estadoData.readCSV();
+      console.log("Aqui", estadoData.esquema);
+      estadoData.esquema.caracteresCorruptos.map((d) => {
+        if(d.caracter.trim().length > 0) {
+          listaCaracteresCorruptos.value.push(d.caracter)}
+        })
+      estadoGlobal.actualizarStatusArchivo("Listo");
       estadoGlobal.setLoadingFile(false);
-      estadoGlobal.actualizarStatusArchivo(
-        `Listo: ${estadoData.esquema.totalFilas} filas, ${estadoData.esquema.totalColumnas} columnas`,
-      );
     } else {
       // En caso de que al final no se haga nada
       dropZone.classed("dragover", false);
@@ -91,22 +90,43 @@ onMounted(() => {
       </div>
     </div>
     <div id="state" class="flex flex-contenido-centrado">
-      <!--<p><b>Estatus:</b> {{ estadoGlobal.statusArchivo }}</p>-->
-      <Errores v-if="archivoInvalido">
-        <p class="m-y-1 m-x-2">El archivo debe tener formato CSV.</p>
-      </Errores>
-      <div v-if="!archivoInvalido && isDataReady" class="m-y-2 p-2 texto-color-confirmacion fondo-color-confirmacion borde borde-redondeado-8 columna-14">
-        <p class="m-0">Archivo cargado correctamente</p>
-        <ul class="m-0">
-          <li class="m-0">Número de filas: {{ estadoData.esquema.totalFilas }}</li>
-          <li class="m-0">Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
-          <li class="m-0">Encoding: {{ estadoData.esquema.encoding }}</li>
-          <li class="m-0">Caracteres corruptos: {{ estadoData.esquema.caracteresCorruptos }}</li>
+      <TarjetaError v-if="archivoInvalido">
+        <p class="m-y-1 m-x-2"> 
+          <span class="pictograma-alerta" aria-hidden="true"></span>
+          El archivo debe tener formato CSV.
+        </p>
+      </TarjetaError>
+      <TarjetaConfirmacion v-if="!archivoInvalido && isDataReady && estadoData.esquema.encoding === 'UTF-8'  && listaCaracteresCorruptos.length == 0" class="tarjeta-estado">
+        <p>Archivo cargado correctamente</p>
+        <ul>
+          <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
+          <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
+          <li>Encoding: {{ estadoData.esquema.encoding }}</li>
+          <li >No se encontaron caracteres corruptos</li>
         </ul>
-      </div>
-      <div class="flex m-y-1"  v-if="estadoGlobal.loadingFile">
-        <p>"Analizando codificación e indizando datos..."</p>
-        <img alt="cargando" src="../../assets/pink-spinner.gif"></img>
+      </TarjetaConfirmacion>
+      <TarjetaAlerta v-else-if="!archivoInvalido && isDataReady" class="tarjeta-estado">
+        <p>Archivo cargado correctamente</p>
+        <ul>
+          <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
+          <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
+          <li>Encoding: {{ estadoData.esquema.encoding }} 
+            <span class="pictograma-alerta" aria-hidden="true"></span>
+          </li>
+          <li v-if="listaCaracteresCorruptos.length > 0">
+            Caracteres corruptos: {{ listaCaracteresCorruptos.join(', ')}} 
+            <span class="pictograma-alerta" aria-hidden="true"></span>
+          </li>
+          <li v-else>
+            No se encontraron caracteres corruptos
+          </li>
+        </ul>
+      </TarjetaAlerta>
+      <div class="flex m-y-1"  v-if="estadoGlobal.loadingFile && !estadoData.isDataReady">
+        <div class="flex flex-contenido-centrado">
+            <img alt="cargando" src="../../assets/pink-spinner.gif" height="100px"></img>
+        </div>
+        <p>Analizando codificación e indizando datos...</p>
       </div>
     </div>
     <TablaCSV v-if="estadoData.isDataReady && !archivoInvalido" />
@@ -128,4 +148,16 @@ onMounted(() => {
   }
 }
 
+.tarjeta-estado{
+  p,
+  ul,
+  ol,
+  li {
+  margin: 0px;
+  }
+}
+
+.loading{
+  margin-top:0px;
+}
 </style>
