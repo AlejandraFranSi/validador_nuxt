@@ -172,12 +172,16 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 
 }
 
+
+/**
+ * Esta función pide un bloque de tamaño block size a partir del indice start_index
+ */
 #[tauri::command]
 fn fetch_rows(start_index: usize, block_size: usize, state: tauri::State<'_, ContenedorDatos>) -> Result<Value, String> {
     let start_index = if start_index == 1{0}else{(start_index -1)  * block_size };
-    let rows = state.dataframe.lock().unwrap();
-    let mut df_slice = rows.as_ref().unwrap().slice(start_index.try_into().unwrap(), block_size).clone();
-
+    let coerced_index: i64 = start_index.try_into().map_err(|_| "No se pudieron recuperar las filas".to_string())?; 
+    let rows = state.dataframe.lock().map_err(|_| "No se pudieron recuperar las filas".to_string())?;
+    let mut df_slice = rows.as_ref().unwrap().slice(coerced_index, block_size).clone();
     let mut buf = Vec::new();
     JsonWriter::new(&mut buf).with_json_format(JsonFormat::Json).finish(&mut df_slice).map_err(|e| format!("Error de formato al escribir JSON: {}", e))?;
     let json_rows: Value = serde_json::from_slice(&buf).map_err(|e| format!("Error al estructurar el JSON: {}", e))?;
