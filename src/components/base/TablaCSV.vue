@@ -112,7 +112,7 @@ watch(nthFirstElementClass, async (nv) => {
 .componente-tabla {
   margin-top: 0px;
   margin-bottom: 30px;
-  height: 90vh;
+  height: 80vh;
 }
 .contenedor-tabla {
   max-width: 100%;

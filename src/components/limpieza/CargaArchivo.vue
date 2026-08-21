@@ -44,10 +44,13 @@ onMounted(() => {
       dropZoneText.value = `Archivo actual: ${estadoData.absolutePath}`;
       estadoGlobal.setLoadingFile(true);
       await estadoData.readCSV();
-      estadoData.esquema.caracteresCorruptos.map((d) => {
-        if(d.caracter.trim().length > 0) {
-          listaCaracteresCorruptos.value.push(d.caracter)}
+      if(estadoData.wasFetchingSuccesfull === true){
+        estadoData.esquema.caracteresCorruptos.map((d) => {
+          if(d.caracter.trim().length > 0) {
+            listaCaracteresCorruptos.value.push(d.caracter)}
         })
+      }
+
       estadoGlobal.actualizarStatusArchivo("Listo");
       estadoGlobal.setLoadingFile(false);
     } else {
@@ -59,7 +62,7 @@ onMounted(() => {
 </script>
 <template>
   <div>
-    <div>
+    <div id="presentacion">
       <p class="m-1">
         Esta herramienta fue diseñada con el objetivo de facilitar el
         mejoramiento de las bases de datos. Para ello, la herramienta:
@@ -80,7 +83,7 @@ onMounted(() => {
       </ol>
         <h4>Comienza cargando un archivo</h4>
     </div>
-    <div class="flex flex-contenido-centrado">
+    <div id="drag-and-drop" class="flex flex-contenido-centrado">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"
         id="dropZone"
@@ -88,47 +91,55 @@ onMounted(() => {
         <p class="p-3">{{ dropZoneText }}</p>
       </div>
     </div>
-    <div id="state" class="flex flex-contenido-centrado">
-      <TarjetaError v-if="archivoInvalido">
-        <p class="m-y-1 m-x-2"> 
-          <span class="pictograma-alerta" aria-hidden="true"></span>
-          El archivo debe tener formato CSV.
-        </p>
-      </TarjetaError>
-      <TarjetaConfirmacion v-if="!archivoInvalido && isDataReady && estadoData.esquema.encoding === 'UTF-8'  && listaCaracteresCorruptos.length == 0" class="tarjeta-estado">
-        <p>Archivo cargado correctamente</p>
-        <ul>
-          <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
-          <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
-          <li>Encoding: {{ estadoData.esquema.encoding }}</li>
-          <li >No se encontaron caracteres corruptos</li>
-        </ul>
-      </TarjetaConfirmacion>
-      <TarjetaAlerta v-else-if="!archivoInvalido && isDataReady" class="tarjeta-estado">
-        <p>Archivo cargado correctamente</p>
-        <ul>
-          <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
-          <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
-          <li>Encoding: {{ estadoData.esquema.encoding }} 
-            <span class="pictograma-alerta" aria-hidden="true"></span>
-          </li>
-          <li v-if="listaCaracteresCorruptos.length > 0">
-            Caracteres corruptos: {{ listaCaracteresCorruptos.join(', ')}} 
-            <span class="pictograma-alerta" aria-hidden="true"></span>
-          </li>
-          <li v-else>
-            No se encontraron caracteres corruptos
-          </li>
-        </ul>
-      </TarjetaAlerta>
-      <div class="flex m-y-1"  v-if="estadoGlobal.loadingFile && !estadoData.isDataReady">
-        <div class="flex flex-contenido-centrado">
-            <img alt="cargando" src="../../assets/pink-spinner.gif" height="100px"></img>
-        </div>
-        <p>Analizando codificación e indizando datos...</p>
+    <div id="spinner" class="flex m-t-4"  v-if="estadoGlobal.loadingFile && !estadoData.isDataReady">
+      <div class="flex flex-contenido-centrado columna-16">
+          <img alt="cargando" src="../../assets/pink-spinner.gif" height="100px"></img>
       </div>
+      <p class="columna-16">Analizando codificación e indizando datos...</p>
     </div>
-    <TablaCSV v-if="estadoData.isDataReady && !archivoInvalido" />
+    <div v-if="estadoData.wasFetchingSuccesfull === true">
+      <div id="state" class="flex flex-contenido-centrado">
+        <TarjetaError v-if="archivoInvalido">
+          <p class="m-y-1 m-x-2"> 
+            <span class="pictograma-alerta" aria-hidden="true"></span>
+            El archivo debe tener formato CSV.
+          </p>
+        </TarjetaError>
+        <TarjetaConfirmacion v-if="!archivoInvalido && isDataReady && estadoData.esquema.encoding === 'UTF-8'  && listaCaracteresCorruptos.length == 0" class="tarjeta-estado">
+          <p>Archivo cargado correctamente</p>
+          <ul>
+            <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
+            <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
+            <li>Encoding: {{ estadoData.esquema.encoding }}</li>
+            <li >No se encontaron caracteres corruptos</li>
+          </ul>
+        </TarjetaConfirmacion>
+        <TarjetaAlerta v-else-if="!archivoInvalido && isDataReady" class="tarjeta-estado">
+          <p>Archivo cargado correctamente</p>
+          <ul>
+            <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
+            <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
+            <li>Encoding: {{ estadoData.esquema.encoding }} 
+              <span class="pictograma-alerta" aria-hidden="true"></span>
+            </li>
+            <li v-if="listaCaracteresCorruptos.length > 0">
+              Caracteres corruptos: {{ listaCaracteresCorruptos.join(', ')}} 
+              <span class="pictograma-alerta" aria-hidden="true"></span>
+            </li>
+            <li v-else>
+              No se encontraron caracteres corruptos
+            </li>
+          </ul>
+        </TarjetaAlerta>
+      </div>
+      <TablaCSV id="tabla-carga" v-if="estadoData.isDataReady && !archivoInvalido" />
+    </div>
+    <div v-if="estadoData.wasFetchingSuccesfull === false" 
+      class="tarjeta-estado flex flex-contenido-centrado" >
+      <TarjetaError>
+        <p>{{estadoData.fetchingError}}</p>
+      </TarjetaError>
+    </div>
   </div>
 </template>
 <style lang="scss" scoped>
@@ -156,7 +167,9 @@ onMounted(() => {
   }
 }
 
-.loading{
-  margin-top:0px;
+#spinner{
+  p{
+    text-align: center;
+  }
 }
 </style>

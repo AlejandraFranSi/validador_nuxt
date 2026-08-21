@@ -5,6 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
+  const wasFetchingSuccesfull = ref(null);
+  const fetchingError = ref(null);
   const blocksInMemmory = 3;
   const blockSize = 20;
   const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
@@ -140,26 +142,37 @@ export const useDataStore = defineStore("data", () => {
    * bloque de filas
    */
   const readCSV = async function () {
+    wasFetchingSuccesfull.value = null;
+    fetchingError.value = null;
     isDataReady.value = false;
     filas.value.lastBlock = 1;
     filas.value.nthLastElement = null;
     filas.value.bloques = {};
-    const data_csv = await invoke("leer_csv", {
-      rutaFront: absolutePath.value,
-    });
-    esquema.value.encoding = data_csv.encoding_aplicado;
-    esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
-    esquema.value.totalFilas = data_csv.total_filas;
-    esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
-    esquema.value.totalColumnas = esquema.value.columnas.length;
-    esquema.value.esquemaColumnas = data_csv.esquema_columnas;
-    await fetchNextRows();
-    isDataReady.value = true;
+    try {
+      const data_csv = await invoke("leer_csv", {
+        rutaFront: absolutePath.value,
+      });
+      esquema.value.encoding = data_csv.encoding_aplicado;
+      esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
+      esquema.value.totalFilas = data_csv.total_filas;
+      esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
+      esquema.value.totalColumnas = esquema.value.columnas.length;
+      esquema.value.esquemaColumnas = data_csv.esquema_columnas;
+      await fetchNextRows();
+      wasFetchingSuccesfull.value = true;
+      isDataReady.value = true;
+    } catch (error) {
+      fetchingError.value = error;
+      wasFetchingSuccesfull.value = false;
+      isDataReady.value = true;
+    }
   };
 
   return {
     absolutePath,
     isDataReady,
+    wasFetchingSuccesfull,
+    fetchingError,
     esquema,
     filas,
     resetearEsquema,

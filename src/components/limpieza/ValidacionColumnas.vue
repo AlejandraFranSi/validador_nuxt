@@ -1,9 +1,55 @@
 <script setup>
+import { nextTick, onMounted, ref } from "vue";
+
 import { useDataStore } from "../../stores/data.js";
 import TablaCSV from "../base/TablaCSV.vue";
 
 const estadoData = useDataStore();
-console.log(estadoData.esquema);
+const preposiciones = [
+  "a",
+  "ante",
+  "bajo",
+  "cabe",
+  "con",
+  "contra",
+  "de",
+  "desde",
+  "durante",
+  "en",
+  "entre",
+  "hacia",
+  "hasta",
+  "mediante",
+  "para",
+  "por",
+  "segun",
+  "sin",
+  "so",
+  "sobre",
+  "tras",
+  "versus",
+];
+const columnasEditadas = ref({});
+
+onMounted(() => {
+  estadoData.esquema.esquemaColumnas.forEach((columna) => {
+    columnasEditadas.value[columna.nombre] = {};
+    console.log(columna.nombre);
+    let newWord = columna.nombre
+      .toLowerCase()
+      .replace(" ", "_")
+      .normalize("NFC")
+      .replace(/[\u0300-\u036f]/g, "");
+    for (let preposicion of preposiciones) {
+      newWord.replace(preposicion, "");
+    }
+    columnasEditadas.value[columna.nombre]["nombreOriginal"] = columna.nombre;
+    columnasEditadas.value[columna.nombre]["sugerido"] = newWord;
+    columnasEditadas.value[columna.nombre]["isValid"] =
+      newWord === columna.nombre ? true : false;
+    columnasEditadas.value[columna.nombre]["tipo"] = columna.tipo;
+  });
+});
 </script>
 <template>
   <p>
@@ -15,9 +61,13 @@ console.log(estadoData.esquema);
     <div class="flex" v-for="(columna, index) in estadoData.esquema.columnas">
       <div class="contenedor-nombre columna-8">
         <label :for="`nombre-columna-${index}`"
-          >Nombre sugerido para {{ columna }}</label
+          >Nombre sugerido para <span>{{ columna }}</span></label
         >
-        <input type="text" :name="`nombre-columna-${index}`" />
+        <input
+          type="text"
+          :name="`nombre-columna-${index}`"
+          v-model="columnasEditadas[columna]['sugerido']"
+        />
       </div>
       <div class="contenedor-tipo columna-8">
         <label :for="`tipo-columna-${index}`"

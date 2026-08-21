@@ -89,10 +89,12 @@ fn es_caracter_corrupto(c: char) -> bool {
 fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     // Confirmar que existe la ruta
     let ruta = ruta_front;
+    println!("La ruta agregada: {:?}", ruta);
     
     // Vamos a leer el archivo y guardarlos en un vector de bytes
-    let file = File::open(&ruta).map_err(|e| e.to_string()).unwrap();
-    
+    let file = File::open("documento.csv").map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
+    //let file = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
+
     // Vamos a leer solo una parte del archivo para poder identificar el encoding
     let mut partial_reader = BufReader::new(file);
     let mut partial_bytes = vec![0; 4096];
