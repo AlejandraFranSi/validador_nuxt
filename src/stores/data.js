@@ -51,7 +51,6 @@ export const useDataStore = defineStore("data", () => {
     let fetchedBlocks = Object.keys(filas.value.bloqueConData)
       .filter((n) => filas.value.bloqueConData[n])
       .map((n) => Number(n));
-
     // Si el indice no existe o es un array vacío,
     // Pedimos los datos para generar un nuevo bloque de key-values
     // y a cada fila le agregamos un indice
@@ -60,7 +59,6 @@ export const useDataStore = defineStore("data", () => {
         startIndex: filas.value.lastBlock,
         blockSize: blockSize,
       });
-
       newRows.forEach(
         (d, index) =>
           (d.indice = (filas.value.lastBlock - 1) * blockSize + index),
@@ -71,7 +69,6 @@ export const useDataStore = defineStore("data", () => {
       filas.value.bloqueConData[currentIndex] = true;
       fetchedBlocks.push(currentIndex);
       fetchedBlocks = fetchedBlocks.sort((a, b) => a - b);
-
       // Señalamos el nuevo último elemento
       const filas_flat = Object.values(filas.value.bloques).flat();
       if (filas_flat.length - nthCount > 0) {
@@ -146,8 +143,11 @@ export const useDataStore = defineStore("data", () => {
     fetchingError.value = null;
     isDataReady.value = false;
     filas.value.lastBlock = 1;
+    filas.value.firstBlock = 1;
     filas.value.nthLastElement = null;
+    filas.value.nthFirstElement = null;
     filas.value.bloques = {};
+    filas.value.bloqueConData = {};
     try {
       const data_csv = await invoke("leer_csv", {
         rutaFront: absolutePath.value,

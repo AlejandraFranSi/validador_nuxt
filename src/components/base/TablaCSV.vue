@@ -7,7 +7,7 @@ const columnas = computed(() => estadoData.esquema.columnas);
 const filas = computed(() => estadoData.filas.bloques);
 const filasFlat = computed(() => Object.values(filas.value).flat());
 const nthLastElementClass = computed(
-  () => `fila-${estadoData.filas.nthLastElement.indice}`,
+  () => `fila-${estadoData.filas.nthLastElement?.indice}`,
 );
 const nthFirstElementClass = computed(
   () => `fila-${estadoData.filas.nthFirstElement?.indice}`,
@@ -58,6 +58,7 @@ onMounted(async () => {
   };
   observerLast.value = new IntersectionObserver(fetchNextRows, options);
   observerFirst.value = new IntersectionObserver(fetchPreviousRows, options);
+  await nextTick();
   targetLast.value = document.querySelector(`.${nthLastElementClass.value}`);
   targetFirst.value = document.querySelector(`.${nthFirstElementClass.value}`);
 
