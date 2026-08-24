@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useDataStore } from "../../stores/data.js";
 
 const estadoData = useDataStore();
+const esquema = computed(() => estadoData.esquema.esquemaColumnas);
 const columnas = computed(() => estadoData.esquema.columnas);
 const filas = computed(() => estadoData.filas.bloques);
 const filasFlat = computed(() => Object.values(filas.value).flat());
@@ -18,8 +19,8 @@ const observerLast = ref(null);
 const observerFirst = ref(null);
 const isFetchingData = ref(false);
 const typeDict = {
-  Fecha: "#EE4266",
-  Numerico: "#FFFEC2",
+  Temporal: "#EE4266",
+  Numérica: "#FFFEC2",
   Texto: "#2BB4DE",
 };
 
@@ -95,8 +96,11 @@ watch(nthFirstElementClass, async (nv) => {
       <table>
         <thead class="header-tabla">
           <tr>
-            <th v-for="columna in columnas">
-              {{ columna }}
+            <th
+              v-for="columna in esquema"
+              :style="{ 'background-color': typeDict[columna.tipo] }"
+            >
+              {{ columna.nombre }}
             </th>
           </tr>
         </thead>

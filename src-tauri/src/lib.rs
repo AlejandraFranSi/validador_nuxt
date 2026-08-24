@@ -86,9 +86,9 @@ fn es_caracter_corrupto(c: char) -> bool {
 }
 
 
-fn castear_columna(df: DataFrame, columna: &str){
+/*fn castear_columna(df: DataFrame, columna: &str){
     
-}
+}*/
 /**
  * Esta función se encarga de leer el archivo y crear el dataframe. Para ello ocurren varias cosas:
  * 1. Primero lee únicamente una parte del archivo para identificar el encoding.
@@ -157,15 +157,63 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 
     let cursor = Cursor::new(contenido_final);
     let mut esquema_columnas: Vec<EsquemaColumna> = Vec::new();  
-    let df = CsvReader::new(cursor).with_options(
+    let mut df = CsvReader::new(cursor).with_options(
         CsvReadOptions::default()
             .with_has_header(true)
         ).finish().map_err(|_| "No se pudo construir el DataFrame. Intentalo de nuevo".to_string())?;
     let total_filas = df.height();
 
-    for column in df.columns(){
+    /*for column in df.columns(){
         let nombre = column.as_materialized_series().name().to_string();
+        let parsed_as_datetime = column.as_materialized_series().date().is_ok();
+        if parsed_as_datetime == true {
+            let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
+            df.replace(&nombre, parsed_column);
+            println!("{nombre} Es de tipo temporal");
+        }else{
+            println!("{nombre} no es de tipo temporal"); 
+        }
         let tipo = column.as_materialized_series().dtype().to_string();
+        esquema_columnas.push(EsquemaColumna{nombre, tipo});
+
+    }*/
+    let nombres: Vec<String> = df
+    .get_column_names()
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+
+    for nombre in nombres {
+    // clonamos la columna (Column usa Arc internamente, es barato)
+        let column = df.column(&nombre).unwrap().clone();
+        let mut tipo: String;
+
+        let parsed_as_datetime = column.as_materialized_series().date();
+        if parsed_as_datetime.is_ok() {
+            let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
+            df.replace(&nombre, parsed_column);
+            println!("{nombre} Es de tipo temporal");
+            tipo = "Temporal".to_string();
+        } else {
+            let parsed_as_float = column.as_materialized_series().f64();
+            if parsed_as_float.is_ok(){
+                let parsed_column = parsed_as_float.unwrap().clone().into_column();
+                df.replace(&nombre, parsed_column);
+                println!("{nombre} Es de tipo numérica");
+                tipo = "Numérica".to_string();
+            } else { 
+                let parsed_as_int = column.as_materialized_series().i64();
+                if parsed_as_int.is_ok(){
+                    let parsed_column = parsed_as_int.unwrap().clone().into_column();
+                    df.replace(&nombre, parsed_column);
+                    println!("{nombre} Es de tipo numérica");
+                    tipo = "Numérica".to_string();
+                } else { 
+                    println!("{nombre} Es de tipo texto");
+                    tipo = "Texto".to_string();
+                }
+            }
+        }
         esquema_columnas.push(EsquemaColumna{nombre, tipo});
     }
 
