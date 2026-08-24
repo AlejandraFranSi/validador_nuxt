@@ -31,7 +31,9 @@ pub struct CaracterCorrupto {
 #[derive(Serialize, Debug)]
 pub struct EsquemaColumna {
     pub nombre: String,
+    pub nombre_sugerido: String,
     pub tipo: String,
+    pub es_nombre_valido: bool,
 }
 
 #[derive(Serialize)]
@@ -163,20 +165,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         ).finish().map_err(|_| "No se pudo construir el DataFrame. Intentalo de nuevo".to_string())?;
     let total_filas = df.height();
 
-    /*for column in df.columns(){
-        let nombre = column.as_materialized_series().name().to_string();
-        let parsed_as_datetime = column.as_materialized_series().date().is_ok();
-        if parsed_as_datetime == true {
-            let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
-            df.replace(&nombre, parsed_column);
-            println!("{nombre} Es de tipo temporal");
-        }else{
-            println!("{nombre} no es de tipo temporal"); 
-        }
-        let tipo = column.as_materialized_series().dtype().to_string();
-        esquema_columnas.push(EsquemaColumna{nombre, tipo});
-
-    }*/
+    // Ahora vamos a intentar castear las columnas del df
     let nombres: Vec<String> = df
     .get_column_names()
     .iter()
@@ -185,6 +174,8 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 
     for nombre in nombres {
     // clonamos la columna (Column usa Arc internamente, es barato)
+        let nombre_sugerido = nombre.to_lowercase().trim().replace(" ", "_");
+        let es_nombre_valido: bool = nombre_sugerido == nombre;
         let column = df.column(&nombre).unwrap().clone();
         let mut tipo: String;
 
@@ -192,29 +183,29 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         if parsed_as_datetime.is_ok() {
             let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
             df.replace(&nombre, parsed_column);
-            println!("{nombre} Es de tipo temporal");
+            //println!("{nombre} Es de tipo temporal");
             tipo = "Temporal".to_string();
         } else {
             let parsed_as_float = column.as_materialized_series().f64();
             if parsed_as_float.is_ok(){
                 let parsed_column = parsed_as_float.unwrap().clone().into_column();
                 df.replace(&nombre, parsed_column);
-                println!("{nombre} Es de tipo numérica");
+                //println!("{nombre} Es de tipo numérica");
                 tipo = "Numérica".to_string();
             } else { 
                 let parsed_as_int = column.as_materialized_series().i64();
                 if parsed_as_int.is_ok(){
                     let parsed_column = parsed_as_int.unwrap().clone().into_column();
                     df.replace(&nombre, parsed_column);
-                    println!("{nombre} Es de tipo numérica");
+                    //println!("{nombre} Es de tipo numérica");
                     tipo = "Numérica".to_string();
                 } else { 
-                    println!("{nombre} Es de tipo texto");
+                    //println!("{nombre} Es de tipo texto");
                     tipo = "Texto".to_string();
                 }
             }
         }
-        esquema_columnas.push(EsquemaColumna{nombre, tipo});
+        esquema_columnas.push(EsquemaColumna{nombre, nombre_sugerido,es_nombre_valido, tipo});
     }
 
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;

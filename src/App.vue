@@ -64,6 +64,9 @@ body[data-perfil="predeterminada"],
   --color-primario-4: #f391a1;
   --color-primario-1: #d8f6b7;
   --color-primario-2: #b2ec6f;
+
+  --color-error-2: #f9c8cf;
+  --color-confirmacion-2: #c2f5b5;
 }
 body {
   margin: 0px;
