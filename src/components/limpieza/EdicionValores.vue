@@ -1,5 +1,5 @@
 <script setup>
-import TablaCSV from "./TablaCSV.vue";
+import TablaCSV from "../base/TablaCSV.vue";
 </script>
 <template>
   <h1>Herramienta de valores</h1>

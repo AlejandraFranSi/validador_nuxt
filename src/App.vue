@@ -1,31 +1,37 @@
 <script setup>
-import VistaCarga from "./components/VistaCarga.vue";
-import VistaEdicion from "./components/VistaEdicion.vue";
-import VistaValidacion from "./components/VistaValidacion.vue";
+import LimpiezaCSV from "./components/LimpiezaCSV.vue";
+import ConfiguracionDiccionarios from "./components/ConfiguracionDiccionarios.vue";
+import RevisionMetadatos from "./components/RevisionMetadatos.vue";
 import SideBar from "./components/SideBar.vue";
-import { ref, watch } from "vue";
 import { useGlobalStore } from "./stores/global.js";
-//import { invoke } from "@tauri-apps/api/core";
 
 const estadoGlobal = useGlobalStore();
 </script>
 
 <template>
-  <main class="container flex">
-    <div class="columna-3">
+  <main>
+    <div>
       <SideBar />
     </div>
-    <div class="mesa-trabajo columna-13">
-      <VistaCarga v-if="estadoGlobal.vistaSeleccionada === 'carga'" />
-      <!-- <VistaValidacion v-if="estadoGlobal.vistaSeleccionada === 'validacion'" />
-      <VistaEdicion v-if="estadoGlobal.vistaSeleccionada === 'edicion'" />-->
+    <div class="mesa-trabajo">
+      <RevisionMetadatos
+        v-if="estadoGlobal.seccionSeleccionada === 'metadatos'"
+      />
+      <ConfiguracionDiccionarios
+        v-if="estadoGlobal.seccionSeleccionada === 'diccionario'"
+      />
+      <LimpiezaCSV v-if="estadoGlobal.seccionSeleccionada === 'limpieza'" />
     </div>
   </main>
 </template>
 
 <style lang="scss">
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bevan:ital@0;1&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
 body[data-perfil="predeterminada"],
 :root {
+  --tipografia-familia: "Nunito", sans-serif;
+  --tipografia-tamanio: 16px;
   --color-neutro-7: #131415;
   --color-neutro-6: #2a2b2e;
   --color-neutro-5: #44474b;
@@ -34,17 +40,49 @@ body[data-perfil="predeterminada"],
   --color-neutro-2: #c9cfcf;
   --color-neutro-1: #eaecec;
   --color-neutro-0: #ffffff;
+
+  --color-secundario-1: #edf9fcff;
+  --color-secundario-2: #ddedf3ff;
+  --color-secundario-3: #cee3eaff;
+  --color-secundario-4: #bad4e0ff;
+  --color-secundario-5: #a4c5d4ff;
+  --color-secundario-6: #8bb3c7ff;
+  --color-secundario-7: #7aa6beff;
+  --color-secundario-8: #6496b3ff;
+  --color-secundario-9: #5389a9ff;
+  --color-secundario-10: #357399ff;
+  --color-secundario-11: #1b5c89ff;
+  --color-secundario-12: #003e68ff;
+
+  /*
+  --color-primario-4: #2cb4b4ff;
+  --color-primario-3: #229496;
+  --color-primario-1: #fb5d01ff;
+  --color-primario-2: #ea7a25;
+  */
+  --color-primario-3: #e83151;
+  --color-primario-4: #f391a1;
+  --color-primario-1: #d8f6b7;
+  --color-primario-2: #b2ec6f;
+}
+body {
+  margin: 0px;
+  padding: 0px;
+  background-color: var(--color-neutro-0);
+}
+.mesa-trabajo {
+  position: absolute;
+  left: 15vw;
+  width: 85%;
+  height: calc(100vh + 100px);
+  margin-top: 0px;
+  padding-top: 0px;
 }
 
-.boton-validacion {
-  background-color: var(--color-primario-3);
-  color: var(--color-secundario-1);
-}
-.boton-archivo {
-  background-color: var(--color-secundario-11);
-  color: var(--color-secundario-1);
-}
-.boton-archivo:disabled {
-  background-color: var(--color-secundario-4);
+@media (max-width: 800px) {
+  .mesa-trabajo {
+    left: 130px;
+    width: calc(100% - 130px);
+  }
 }
 </style>

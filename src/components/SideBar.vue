@@ -1,101 +1,85 @@
 <script setup>
-import { ref, watch, computed } from "vue";
 import { useGlobalStore } from "../stores/global.js";
 const estadoGlobal = useGlobalStore();
 </script>
 <template>
   <div class="sidebar">
-    <button
-      class="boton-primario m-2"
-      type="button"
-      id="cargarTool"
-      data-bs-toggle="button"
-      @click="estadoGlobal.actualizarVista('carga')"
-    >
-      Cargar archivo
-    </button>
-    <button
-      class="boton-primario m-2 tools"
-      type="button"
-      id="validacionTool"
-      data-bs-toggle="button"
-      disabled
-      @click="estadoGlobal.actualizarVista('validacion')"
-    >
-      Validación de columnas
-    </button>
-    <button
-      class="boton-primario m-2 tools"
-      type="button"
-      id="categosTool"
-      data-bs-toggle="button"
-      disabled
-      @click="estadoGlobal.actualizarVista('edicion')"
-    >
-      Edición de valores
-    </button>
-    <hr />
-    <button
-      class="boton-secundario m-2 tools"
-      type="button"
-      id="comparaTool"
-      disabled
-    >
-      Comparar
-    </button>
-    <hr />
-    <button
-      class="boton-archivo m-2 tools"
-      type="button"
-      id="descargaTool"
-      disabled
-    >
-      Exportar a CSV
-    </button>
-    <button
-      class="boton-archivo m-2 tools"
-      type="button"
-      id="subirTool"
-      disabled
-    >
-      Subir archivo
-    </button>
-
-    <div id="stata" class="m-y-1 m-x-2">
-      <p><b>Estatus</b></p>
-      <div class="flex m-y-1">
-          <img v-if="estadoGlobal.loadingFile" alt="cargando" src="../assets/pink-spinner.gif"></img>
-          <p class="columna-12">{{ estadoGlobal.statusArchivo }}</p>
-      </div>
+    <div class="identidad p-2 m-y-7">
+      <p>Herramienta de validación</p>
+    </div>
+    <div class="secciones m-t-3">
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.seccionSeleccionada === 'metadatos'
+            ? 'is-selected'
+            : null
+        "
+        @click="estadoGlobal.actualizarVista('metadatos', 'inicio')"
+      >
+        Metadatos
+      </button>
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.seccionSeleccionada === 'diccionario'
+            ? 'is-selected'
+            : null
+        "
+        @click="estadoGlobal.actualizarVista('diccionario', 'inicio')"
+      >
+        Diccionario
+      </button>
+      <button
+        class="boton-chico"
+        :class="
+          estadoGlobal.seccionSeleccionada === 'limpieza' ? 'is-selected' : null
+        "
+        @click="estadoGlobal.actualizarVista('limpieza', 'carga')"
+      >
+        Limpieza de datos
+      </button>
     </div>
   </div>
 </template>
 <style lang="scss" scoped>
-
-#stata {
-  font-size: smaller;
-  p{
-    margin: 0px;
-  }
-  img{
-        height: 16px;
-        width: 16px;
-      }
-}
 .sidebar {
-  background-color: var(--color-neutro-1);
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
   height: 100vh;
+  width: 15vw;
+  background-color: var(--color-secundario-12);
+  color: var(--color-neutro-1);
+}
+.identidad {
+  height: 15vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
+}
+button {
+  background-color: var(--color-secundario-12);
+  color: var(--color-neutro-1);
+  width: 100%;
+  border-radius: 0%;
+  border-bottom: solid 1px var(--color-primario-4);
+  text-align: left;
+}
+button:hover {
+  background-color: var(--color-secundario-9);
+}
+.is-selected {
+  border-left: solid 5px var(--color-primario-4);
 }
 
-.boton-archivo {
-  background-color: var(--color-secundario-8);
-  color: var(--color-secundario-1);
-}
-.boton-archivo:hover {
-  background-color: var(--color-secundario-6);
-}
-.boton-archivo:disabled {
-  background-color: var(--color-neutro-2);
-  color: var(--color-neutro-4);
+@media (max-width: 800px) {
+  .sidebar {
+    width: 130px;
+  }
 }
 </style>

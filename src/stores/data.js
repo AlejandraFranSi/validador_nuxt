@@ -5,7 +5,11 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const isDataReady = ref(false);
-  const nthCount = 30;
+  const wasFetchingSuccesfull = ref(null);
+  const fetchingError = ref(null);
+  const blocksInMemmory = 3;
+  const blockSize = 20;
+  const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
   const esquema = ref({
     caracteresCorruptos: null,
     encoding: null,
@@ -15,71 +19,166 @@ export const useDataStore = defineStore("data", () => {
     totalColumnas: null,
   });
   const filas = ref({
-    currentBlock: 1,
-    blockSize: 100,
-    nthElement: null,
+    lastBlock: 1,
+    firstBlock: 1,
+    nthLastElement: null,
+    nthFirstElement: null,
     bloques: {},
+    bloqueConData: {},
   });
 
   const updatePath = function (pathString) {
     absolutePath.value = pathString;
   };
 
-  const updateCurrentBlock = function () {
-    filas.value.currentBlock++;
+  const resetearEsquema = function () {
+    esquema.value.caracteresCorruptos = null;
+    esquema.value.encoding = null;
+    esquema.value.columnas = null;
+    esquema.value.esquemaColumnas = null;
+    esquema.value.totalFilas = null;
+    esquema.value.totalColumnas = null;
   };
 
-  const fetchRows = async function () {
-    const rowsBlock = await invoke("fetch_rows", {
-      startIndex: filas.value.currentBlock,
-      blockSize: filas.value.blockSize,
-    });
-
-    if (!Object.keys(filas.value.bloques).includes(filas.value.currentBlock)) {
-      rowsBlock.forEach(
+  /**
+   * Esta función se encarga de pedir las filas del bloque siguiente
+   * y se asegura que no se tengan más bloques de filas que los señalados
+   */
+  const fetchNextRows = async function () {
+    // Revisamos si ya existe el key-value pair con el indice indicado
+    // y que no sea un array vacío
+    const currentIndex = filas.value.lastBlock;
+    let fetchedBlocks = Object.keys(filas.value.bloqueConData)
+      .filter((n) => filas.value.bloqueConData[n])
+      .map((n) => Number(n));
+    // Si el indice no existe o es un array vacío,
+    // Pedimos los datos para generar un nuevo bloque de key-values
+    // y a cada fila le agregamos un indice
+    if (!fetchedBlocks.includes(currentIndex)) {
+      const newRows = await invoke("fetch_rows", {
+        startIndex: filas.value.lastBlock,
+        blockSize: blockSize,
+      });
+      newRows.forEach(
         (d, index) =>
-          (d.indice =
-            (filas.value.currentBlock - 1) * filas.value.blockSize + index),
+          (d.indice = (filas.value.lastBlock - 1) * blockSize + index),
       );
-      filas.value.bloques[filas.value.currentBlock] = rowsBlock;
+
+      //Actualizamos la data de la store
+      filas.value.bloques[currentIndex] = newRows;
+      filas.value.bloqueConData[currentIndex] = true;
+      fetchedBlocks.push(currentIndex);
+      fetchedBlocks = fetchedBlocks.sort((a, b) => a - b);
+      // Señalamos el nuevo último elemento
+      const filas_flat = Object.values(filas.value.bloques).flat();
+      if (filas_flat.length - nthCount > 0) {
+        filas.value.nthLastElement = filas_flat[filas_flat.length - nthCount];
+      } else {
+        filas.value.nthLastElement = filas_flat[filas_flat.length - 1];
+      }
+      filas.value.lastBlock++;
+
+      // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
+      if (blocksInMemmory < fetchedBlocks.length) {
+        const elementToDelete = fetchedBlocks[0];
+        filas.value.bloques[elementToDelete] = filas.value.bloques[
+          elementToDelete
+        ].map((element) => (element = {}));
+        filas.value.bloqueConData[elementToDelete] = false;
+        filas.value.firstBlock = fetchedBlocks[1];
+        filas.value.nthFirstElement =
+          filas.value.bloques[filas.value.firstBlock][nthCount];
+      } else {
+        filas.value.nthFirstElement = filas_flat[nthCount];
+      }
     }
-    const filas_flat = Object.values(filas.value.bloques).flat();
-    filas.value.nthElement = filas_flat[filas_flat.length - nthCount];
-    updateCurrentBlock();
   };
 
+  /**
+   * Esta función se encarga de pedir las filas del bloque anterior
+   * y se asegura que no se tengan más bloques de filas que los señalados
+   */
+  const fetchPreviousRows = async function () {
+    // Solo pedimos el bloque anterior cuando no estamos en el primer bloque
+    if (filas.value.firstBlock - 1 > 0) {
+      filas.value.firstBlock -= 1;
+      const prevRows = await invoke("fetch_rows", {
+        startIndex: filas.value.firstBlock,
+        blockSize: blockSize,
+      });
+      prevRows.forEach(
+        (d, index) =>
+          (d.indice = (filas.value.firstBlock - 1) * blockSize + index),
+      );
+      filas.value.bloques[filas.value.firstBlock] = prevRows;
+      filas.value.bloqueConData[filas.value.firstBlock] = true;
+      filas.value.nthFirstElement =
+        filas.value.bloques[filas.value.firstBlock][nthCount];
+
+      // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
+      let fetchedBlocks = Object.keys(filas.value.bloqueConData)
+        .filter((n) => filas.value.bloqueConData[n])
+        .map((n) => Number(n))
+        .sort((a, b) => a - b);
+
+      if (blocksInMemmory < fetchedBlocks.length) {
+        const elementToDelete = fetchedBlocks[fetchedBlocks.length - 1];
+        filas.value.bloques[elementToDelete] = filas.value.bloques[
+          elementToDelete
+        ].map((element) => (element = {}));
+        filas.value.bloqueConData[elementToDelete] = false;
+        filas.value.lastBlock = [fetchedBlocks.length - 2];
+        filas.value.nthLastElement =
+          filas.value.bloques[filas.value.lastBlock][blockSize - nthCount];
+      }
+    }
+  };
+  /**
+   * Esta función resetea la información de archivo cada vez que se carga
+   * uno nuevo, actualiza el esquema de los datos y también pide el primer
+   * bloque de filas
+   */
   const readCSV = async function () {
+    wasFetchingSuccesfull.value = null;
+    fetchingError.value = null;
     isDataReady.value = false;
-    // Cada que cargamos un archivo nuevo, reseteamos las filas
-    filas.value.currentBlock = 1;
-    filas.value.nthElement = null;
+    filas.value.lastBlock = 1;
+    filas.value.firstBlock = 1;
+    filas.value.nthLastElement = null;
+    filas.value.nthFirstElement = null;
     filas.value.bloques = {};
-
-    // Solicitamos el esquema de los datos
-    const data_csv = await invoke("leer_csv", {
-      rutaFront: absolutePath.value,
-    });
-    // Actualizamos la variable del esquema de los datos
-    esquema.value.encoding = data_csv.encoding_aplicado;
-    esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
-    esquema.value.totalFilas = data_csv.total_filas;
-    esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
-    esquema.value.totalColumnas = esquema.value.columnas.length;
-    esquema.value.esquemaColumnas = data_csv.esquema_columnas;
-
-    // Vamos a pedir el primer bloque de columnas
-    await fetchRows();
-    // Actualizamos el estado de los datos
-    isDataReady.value = true;
+    filas.value.bloqueConData = {};
+    try {
+      const data_csv = await invoke("leer_csv", {
+        rutaFront: absolutePath.value,
+      });
+      esquema.value.encoding = data_csv.encoding_aplicado;
+      esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
+      esquema.value.totalFilas = data_csv.total_filas;
+      esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
+      esquema.value.totalColumnas = esquema.value.columnas.length;
+      esquema.value.esquemaColumnas = data_csv.esquema_columnas;
+      await fetchNextRows();
+      wasFetchingSuccesfull.value = true;
+      isDataReady.value = true;
+    } catch (error) {
+      fetchingError.value = error;
+      wasFetchingSuccesfull.value = false;
+      isDataReady.value = true;
+    }
   };
 
   return {
     absolutePath,
     isDataReady,
+    wasFetchingSuccesfull,
+    fetchingError,
     esquema,
     filas,
+    resetearEsquema,
     updatePath,
     readCSV,
-    fetchRows,
+    fetchNextRows,
+    fetchPreviousRows,
   };
 });
