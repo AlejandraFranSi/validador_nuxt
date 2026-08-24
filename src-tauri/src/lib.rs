@@ -85,6 +85,10 @@ fn es_caracter_corrupto(c: char) -> bool {
     false
 }
 
+
+fn castear_columna(df: DataFrame, columna: &str){
+    
+}
 /**
  * Esta función se encarga de leer el archivo y crear el dataframe. Para ello ocurren varias cosas:
  * 1. Primero lee únicamente una parte del archivo para identificar el encoding.
