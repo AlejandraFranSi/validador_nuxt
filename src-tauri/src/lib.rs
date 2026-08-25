@@ -8,6 +8,10 @@ use std::io::{Read, BufReader, BufRead, Cursor};
 use std::sync::Mutex;
 use serde::{Serialize};
 use tauri::State;
+use regex::Regex;
+use std::sync::LazyLock;
+use unicode_normalization::UnicodeNormalization;
+use std::sync::OnceLock;
 //use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -23,6 +27,13 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+#[derive(Serialize)]
+pub struct ValidacionCadena {
+    cadena: String,
+    sugerido: String,
+    incidencia: bool,
+    errores: Vec<String>,
+}
 #[derive(Serialize, Debug)]
 pub struct CaracterCorrupto {
     pub caracter: String,
@@ -38,21 +49,81 @@ pub struct EsquemaColumna {
 
 #[derive(Serialize)]
 pub struct ReporteCsv {
+    pub nombre_archivo: ValidacionCadena,
     pub encoding_aplicado: String,
-    //pub requiere_conversion: bool,
     pub caracteres_corruptos: Vec<CaracterCorrupto>,
     pub total_filas: usize,
-    //pub columnas: Vec<String>,
     pub esquema_columnas: Vec<EsquemaColumna>,
 }
 
 pub struct ContenedorDatos {
     pub dataframe: Mutex<Option<DataFrame>>,
-    //pub referencia: Mutex<Option<DataFrame>>,
-    //pub ruta_original: Mutex<Option<String>>,
-    //pub ruta_sugerida: Mutex<Option<String>>
 }
 
+/**
+ * Esta función recibe una cadena y hace las siguientes revisiones
+ * 1. Quita espacios iniciales y finales
+ * 2. Transforma todo a minúsculas
+ * 3. Cambia las ñ por ni
+ * 4. Quita acentos
+ * 5. Cambia espacios por guiones bajos
+ * 6. Quita artículos y preposiciones
+ * 7. Quita caracteres especiales
+ * Regresa un arreglo con el nombre original, el nombre sugerido,
+ * si estos coinciden y la lista de errores
+ */
+fn validar_cadena(cadena_arg: &str) -> ValidacionCadena{
+    let mut errores: Vec<String> = Vec::new();
+    static RE_NO_ALFA: OnceLock<Regex> = OnceLock::new();
+    let re_no_alfa = RE_NO_ALFA.get_or_init(|| Regex::new(r"[^a-z0-9]").unwrap());
+    let prohibidas = ["el","la","los","las","un","una","unos","unas","a","que",
+                                "ante","bajo","cabe","con","contra","de","del","durante",
+                                "en","entre","mediante","para","segun","por",
+                                "sin","so","sobre","tras","versus","y","o","e","u"];
+
+    let cadena = cadena_arg.to_string();
+    let sin_espacios_iniciales: String = cadena.trim().to_string();
+    if sin_espacios_iniciales.len() != cadena.len(){
+        errores.push("Incluye espacios vacíos al inicio o al final".to_string());
+    }
+    let en_minusculas: String = sin_espacios_iniciales.to_lowercase().to_string();
+    if sin_espacios_iniciales != en_minusculas{
+        errores.push("Incluye mayúsculas".to_string());
+    }
+
+    let sin_enie = en_minusculas.replace('ñ', "ni");
+    if sin_enie != en_minusculas{
+        errores.push("Incluye la letra ñ".to_string());
+    }
+    let sin_acentos = sin_enie.nfd().filter(|c|!('\u{0300}'..='\u{036f}').contains(c)).collect::<String>();
+    if sin_acentos != sin_enie{
+        errores.push("Incluye acentos".to_string());
+    }
+    let sin_espacios = sin_acentos.replace(" ", "_");
+    if sin_espacios != sin_acentos {
+        errores.push("Incluye espacios".to_string());
+    }
+
+    let palabras: Vec<&str> = sin_espacios
+        .split('_')
+        .filter(|p| !p.is_empty() && !prohibidas.contains(p))
+        .collect();
+    let sin_articulos = palabras.join("_");
+    if sin_articulos != sin_espacios {
+        errores.push("Incluye artículos o preposiciones".to_string());
+    }
+    let sin_especiales = re_no_alfa.replace_all(&sin_articulos, "_").into_owned();
+    if sin_articulos != sin_especiales {
+        errores.push("Incluye otros carácteres especiales".to_string());
+    }
+    let sugerido = sin_especiales;
+    let incidencia = sugerido == cadena;
+    ValidacionCadena{cadena, sugerido, incidencia, errores}
+}
+
+/**
+ * Esta función identifica si un caracter es válido en UTF8 o no
+ */
 fn es_caracter_corrupto(c: char) -> bool {
     let code = c as u32;
 
@@ -87,6 +158,10 @@ fn es_caracter_corrupto(c: char) -> bool {
     false
 }
 
+/**
+ * Esta función intenta hacer la transformación de una columna con valores
+ * de un tipo a otro tipo. También intenta cambiar el nombre de la columna.
+ */
 #[tauri::command]
 fn castear_columna(cols: Vec<(&str, &str, &str)>){
     println!("{:?}", cols);
@@ -105,8 +180,10 @@ fn castear_columna(cols: Vec<(&str, &str, &str)>){
  */
 #[tauri::command]
 fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
-    let ruta = ruta_front;    
-    //let file = File::open("documento.csv").map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
+    let ruta = ruta_front;
+    let directorio: Vec<&str> = ruta.split('\\').collect();
+    let nombre = directorio[directorio.len() - 1].replace(".csv", "");
+    let nombre_archivo = validar_cadena(&nombre);    
     let file = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
 
     let mut partial_reader = BufReader::new(file);
@@ -212,7 +289,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
     *guardado = Some(df);
 
-    Ok(ReporteCsv{encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
 
 }
 
