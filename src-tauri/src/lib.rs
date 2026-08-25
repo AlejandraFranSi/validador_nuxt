@@ -18,7 +18,7 @@ pub fn run() {
          .manage(ContenedorDatos { 
             dataframe: Mutex::new(None),
         })
-        .invoke_handler(tauri::generate_handler![leer_csv, fetch_rows])
+        .invoke_handler(tauri::generate_handler![leer_csv, fetch_rows, castear_columna])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -87,10 +87,11 @@ fn es_caracter_corrupto(c: char) -> bool {
     false
 }
 
+#[tauri::command]
+fn castear_columna(cols: Vec<(&str, &str, &str)>){
+    println!("{:?}", cols);
+}
 
-/*fn castear_columna(df: DataFrame, columna: &str){
-    
-}*/
 /**
  * Esta función se encarga de leer el archivo y crear el dataframe. Para ello ocurren varias cosas:
  * 1. Primero lee únicamente una parte del archivo para identificar el encoding.

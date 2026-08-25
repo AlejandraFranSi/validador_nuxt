@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useDataStore } from "../../stores/data.js";
 import TablaCSV from "../base/TablaCSV.vue";
+import { invoke } from "@tauri-apps/api/core";
 
 const estadoData = useDataStore();
 const columnas = computed(() => estadoData.esquema.esquemaColumnas);
@@ -36,6 +37,16 @@ const typeDict = {
   Texto: "#2BB4DE",
 };
 
+const promoverCambios = function () {
+  let colsDict = [];
+  for (const [i, columna] of columnas.value.entries()) {
+    const inputNombre = document.getElementById(`nombre-columna-${i}`).value;
+    const inputTipo = document.getElementById(`tipo-columna-${i}`).value;
+    colsDict.push([columna.nombre, inputNombre, inputTipo]);
+  }
+  console.log(colsDict);
+  invoke("castear_columna", { cols: colsDict });
+};
 const sugerirNombre = function (nombre) {
   let nombreSugerido = nombre
     .toLowerCase()
@@ -99,6 +110,7 @@ const sugerirNombre = function (nombre) {
         >
         <input
           type="text"
+          :id="`nombre-columna-${index}`"
           :name="`nombre-columna-${index}`"
           :value="columna.nombre_sugerido"
         />
@@ -112,7 +124,7 @@ const sugerirNombre = function (nombre) {
           </span>
           &nbsp a:</label
         >
-        <select :name="`nombre-columna-${index}`">
+        <select :name="`nombre-columna-${index}`" :id="`tipo-columna-${index}`">
           <option value="texto">Texto</option>
           <option value="texto-sin-guines">Texto sin guiones</option>
           <option value="texto-minusculas">Texto en minúsculas</option>
@@ -124,7 +136,9 @@ const sugerirNombre = function (nombre) {
       </div>
     </div>
   </div>
-  <button class="boton-primario m-t-2">Promover cambios</button>
+  <button class="boton-primario m-t-2" @click="promoverCambios">
+    Promover cambios
+  </button>
 
   <TablaCSV />
 </template>
