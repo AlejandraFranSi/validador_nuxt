@@ -104,7 +104,7 @@ const sugerirNombre = function (nombre) {
       <div class="contenedor-nombre columna-7">
         <label :for="`nombre-columna-${index}`" class="m-1"
           >Nombre sugerido para &nbsp
-          <span :class="columna.es_nombre_valido ? 'verde' : 'rojo'">
+          <span :class="columna.incidencia ? 'verde' : 'rojo'">
             {{ columna.nombre }}</span
           ></label
         >

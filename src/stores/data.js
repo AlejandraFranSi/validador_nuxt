@@ -11,6 +11,7 @@ export const useDataStore = defineStore("data", () => {
   const blockSize = 20;
   const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
   const esquema = ref({
+    infoArchivo: null,
     caracteresCorruptos: null,
     encoding: null,
     columnas: null,
@@ -32,6 +33,7 @@ export const useDataStore = defineStore("data", () => {
   };
 
   const resetearEsquema = function () {
+    esquema.value.infoArchivo = null;
     esquema.value.caracteresCorruptos = null;
     esquema.value.encoding = null;
     esquema.value.columnas = null;
@@ -152,6 +154,8 @@ export const useDataStore = defineStore("data", () => {
       const data_csv = await invoke("leer_csv", {
         rutaFront: absolutePath.value,
       });
+      console.log(data_csv);
+      esquema.value.infoArchivo = data_csv.nombre_archivo;
       esquema.value.encoding = data_csv.encoding_aplicado;
       esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
       esquema.value.totalFilas = data_csv.total_filas;

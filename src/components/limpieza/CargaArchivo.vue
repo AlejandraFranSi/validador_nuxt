@@ -1,14 +1,12 @@
 <script setup>
 import * as d3 from "d3";
 import TablaCSV from "../base/TablaCSV.vue";
+import ReporteArchivo from "./ReporteArchivo.vue";
 import TarjetaError from "../base/TarjetaError.vue";
-import TarjetaConfirmacion from "../base/TarjetaConfirmacion.vue";
-import TarjetaAlerta from "../base/TarjetaAlerta.vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onMounted, ref, computed} from "vue";
 import { useGlobalStore } from "../../stores/global.js";
 import { useDataStore } from "../../stores/data.js";
-//import { invoke } from "@tauri-apps/api/core";
 
 const estadoGlobal = useGlobalStore();
 const estadoData = useDataStore();
@@ -105,32 +103,7 @@ onMounted(() => {
             El archivo debe tener formato CSV.
           </p>
         </TarjetaError>
-        <TarjetaConfirmacion v-if="!archivoInvalido && isDataReady && estadoData.esquema.encoding === 'UTF-8'  && listaCaracteresCorruptos.length == 0" class="tarjeta-estado">
-          <p>Archivo cargado correctamente</p>
-          <ul>
-            <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
-            <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
-            <li>Encoding: {{ estadoData.esquema.encoding }}</li>
-            <li >No se encontaron caracteres corruptos</li>
-          </ul>
-        </TarjetaConfirmacion>
-        <TarjetaAlerta v-else-if="!archivoInvalido && isDataReady" class="tarjeta-estado">
-          <p>Archivo cargado correctamente</p>
-          <ul>
-            <li>Número de filas: {{ estadoData.esquema.totalFilas }}</li>
-            <li>Número de columnas: {{ estadoData.esquema.totalColumnas }}</li>
-            <li>Encoding: {{ estadoData.esquema.encoding }} 
-              <span class="pictograma-alerta" aria-hidden="true"></span>
-            </li>
-            <li v-if="listaCaracteresCorruptos.length > 0">
-              Caracteres corruptos: {{ listaCaracteresCorruptos.join(', ')}} 
-              <span class="pictograma-alerta" aria-hidden="true"></span>
-            </li>
-            <li v-else>
-              No se encontraron caracteres corruptos
-            </li>
-          </ul>
-        </TarjetaAlerta>
+        <ReporteArchivo v-if="!archivoInvalido && isDataReady" class="tarjeta-estado"/>
       </div>
       <TablaCSV id="tabla-carga" v-if="estadoData.isDataReady && !archivoInvalido" />
     </div>

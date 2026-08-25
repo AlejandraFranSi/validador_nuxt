@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use serde::{Serialize};
 use tauri::State;
 use regex::Regex;
-use std::sync::LazyLock;
+//use std::sync::LazyLock;
 use unicode_normalization::UnicodeNormalization;
 use std::sync::OnceLock;
 //use tauri::Manager;
@@ -27,7 +27,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ValidacionCadena {
     cadena: String,
     sugerido: String,
@@ -44,7 +44,8 @@ pub struct EsquemaColumna {
     pub nombre: String,
     pub nombre_sugerido: String,
     pub tipo: String,
-    pub es_nombre_valido: bool,
+    pub incidencia: bool,
+    pub errores: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -252,8 +253,10 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
 
     for nombre in nombres {
     // clonamos la columna (Column usa Arc internamente, es barato)
-        let nombre_sugerido = nombre.to_lowercase().trim().replace(" ", "_");
-        let es_nombre_valido: bool = nombre_sugerido == nombre;
+        let propiedades = validar_cadena(&nombre);
+        let nombre_sugerido = propiedades.sugerido;
+        let incidencia: bool = propiedades.incidencia;
+        let errores: Vec<String> = propiedades.errores;
         let column = df.column(&nombre).unwrap().clone();
         let mut tipo: String;
 
@@ -283,7 +286,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
                 }
             }
         }
-        esquema_columnas.push(EsquemaColumna{nombre, nombre_sugerido,es_nombre_valido, tipo});
+        esquema_columnas.push(EsquemaColumna{nombre, nombre_sugerido, incidencia, tipo, errores});
     }
 
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
