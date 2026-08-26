@@ -84,12 +84,6 @@ export const useDataStore = defineStore("data", () => {
         totalColumnas: data_csv.total_columnas,
         esquemaColumnas: data_csv.esquema_columnas,
       };
-      //esquema.value.infoArchivo = data_csv.nombre_archivo;
-      //esquema.value.encoding = data_csv.encoding_aplicado;
-      //esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
-      //esquema.value.totalFilas = data_csv.total_filas;
-      //esquema.value.totalColumnas = esquema.value.columnas.length;
-      //esquema.value.esquemaColumnas = data_csv.esquema_columnas;
       await fetchNextRows();
       dataStatus.value.wasFetchingSuccesfull = true;
     } catch (error) {

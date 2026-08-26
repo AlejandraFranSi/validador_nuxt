@@ -6,14 +6,37 @@ import TarjetaError from "../base/TarjetaError.vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { onMounted, ref, computed} from "vue";
 import { useDataStore } from "../../stores/data.js";
+import { useGlobalStore } from "../../stores/global.js";
 
 const appWindow = getCurrentWindow();
 const dropZoneText = ref(null);
 const estadoData = useDataStore();
+const estadoGlobal = useGlobalStore();
 const estaCargando = computed(() => estadoData.dataStatus.isLoading);
 const seLeyoArchivo = computed(() => estadoData.dataStatus.wasFetchingSuccesfull);
 const erroresLectura = computed(() => estadoData.dataStatus.fetchingError);
+const validacionNombre = ref([
+  {
+    "leyenda": "¿El nombre del archivo está en español?",
+    "grupo": "nombreEspaniol",
+    "valor": true
+  },
+  {
+    "leyenda": "¿El nombre del archivo es descriptivo del conjunto de datos?",
+    "grupo": "nombreDescriptivo",
+    "valor": true
+  },
+  {
+    "leyenda": "¿El nombre del archivo incluye la temporalidad de los datos?",
+    "grupo": "nombreTemporal",
+    "valor": true
+  }
+])
 
+const irAValidacion = function(){
+  console.log("Se guardan los errores");
+  estadoGlobal.actualizarVista('limpieza', 'columnas')
+}
 
 onMounted(() => {
   dropZoneText.value = estadoData.absolutePath
@@ -39,6 +62,7 @@ onMounted(() => {
 </script>
 <template>
   <div>
+    <!-- La presentacion-->
     <div id="presentacion">
       <p class="m-1">
         Esta herramienta fue diseñada con el objetivo de facilitar el
@@ -60,6 +84,7 @@ onMounted(() => {
       </ol>
         <h4>Comienza cargando un archivo</h4>
     </div>
+    <!-- El dropdown -->
     <div id="drag-and-drop" class="flex flex-contenido-centrado">
       <div
         class="dropZone columna-14 borde-redondeado-8 flex flex-contenido-centrado"
@@ -88,6 +113,28 @@ onMounted(() => {
         <ReporteArchivo class="tarjeta-estado"/>
       </div>
       <TablaCSV id="tabla-carga"/>
+      <div class="m-t-8">
+        <h3>A partir de la vista de datos, responde lo siguiente:</h3>
+          <SisdaiBotonesRadioGrupo
+          v-for="pregunta in validacionNombre"
+          :key="pregunta.grupo"
+          :leyenda="pregunta.leyenda"
+          >
+            <SisdaiBotonRadio
+              v-model="pregunta.valor"
+              etiqueta="Si"
+              :value="`${true}`"
+              :name="pregunta.grupo"
+            />
+            <SisdaiBotonRadio
+              v-model="pregunta.valor"
+              etiqueta="No"
+              :value="`${false}`"
+              :name="pregunta.grupo"
+            />
+          </SisdaiBotonesRadioGrupo>
+      </div>
+      <button class="boton-primario" @click="irAValidacion">Siguiente</button>
     </div>
   </div>
 </template>

@@ -77,8 +77,8 @@ body {
   position: absolute;
   left: 15vw;
   width: 85%;
-  height: calc(100vh + 100px);
   margin-top: 0px;
+  padding-bottom: 40px;
   padding-top: 0px;
 }
 
