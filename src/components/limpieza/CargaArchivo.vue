@@ -19,17 +19,17 @@ const validacionNombre = ref([
   {
     "leyenda": "¿El nombre del archivo está en español?",
     "grupo": "nombreEspaniol",
-    "valor": true
+    "valor": "true"
   },
   {
     "leyenda": "¿El nombre del archivo es descriptivo del conjunto de datos?",
     "grupo": "nombreDescriptivo",
-    "valor": true
+    "valor": "true"
   },
   {
     "leyenda": "¿El nombre del archivo incluye la temporalidad de los datos?",
     "grupo": "nombreTemporal",
-    "valor": true
+    "valor": "true"
   }
 ])
 
@@ -123,13 +123,13 @@ onMounted(() => {
             <SisdaiBotonRadio
               v-model="pregunta.valor"
               etiqueta="Si"
-              :value="`${true}`"
+              value="true"
               :name="pregunta.grupo"
             />
             <SisdaiBotonRadio
               v-model="pregunta.valor"
               etiqueta="No"
-              :value="`${false}`"
+              value="false"
               :name="pregunta.grupo"
             />
           </SisdaiBotonesRadioGrupo>

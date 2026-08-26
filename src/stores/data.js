@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
   const blocksInMemmory = 3;
-  const blockSize = 20;
+  const blockSize = 100;
   const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
   const dataStatus = ref({
     isLoading: false,
@@ -76,7 +76,6 @@ export const useDataStore = defineStore("data", () => {
         rutaFront: absolutePath.value,
       });
       esquema.value = {
-        ...esquema.value,
         infoArchivo: data_csv.nombre_archivo,
         encoding: data_csv.encoding_aplicado,
         caracteresCorruptos: data_csv.caracteres_corruptos,
@@ -108,41 +107,45 @@ export const useDataStore = defineStore("data", () => {
     // Pedimos los datos para generar un nuevo bloque de key-values
     // y a cada fila le agregamos un indice
     if (!fetchedBlocks.includes(currentIndex)) {
-      const newRows = await invoke("fetch_rows", {
-        startIndex: filas.value.lastBlock,
-        blockSize: blockSize,
-      });
-      newRows.forEach(
-        (d, index) =>
-          (d.indice = (filas.value.lastBlock - 1) * blockSize + index),
-      );
+      try {
+        const newRows = await invoke("fetch_rows", {
+          startIndex: filas.value.lastBlock,
+          blockSize: blockSize,
+        });
+        newRows.forEach(
+          (d, index) =>
+            (d.indice = (filas.value.lastBlock - 1) * blockSize + index),
+        );
 
-      //Actualizamos la data de la store
-      filas.value.bloques[currentIndex] = newRows;
-      filas.value.bloqueConData[currentIndex] = true;
-      fetchedBlocks.push(currentIndex);
-      fetchedBlocks = fetchedBlocks.sort((a, b) => a - b);
-      // Señalamos el nuevo último elemento
-      const filas_flat = Object.values(filas.value.bloques).flat();
-      if (filas_flat.length - nthCount > 0) {
-        filas.value.nthLastElement = filas_flat[filas_flat.length - nthCount];
-      } else {
-        filas.value.nthLastElement = filas_flat[filas_flat.length - 1];
-      }
-      filas.value.lastBlock++;
+        //Actualizamos la data de la store
+        filas.value.bloques[currentIndex] = newRows;
+        filas.value.bloqueConData[currentIndex] = true;
+        fetchedBlocks.push(currentIndex);
+        fetchedBlocks = fetchedBlocks.sort((a, b) => a - b);
+        // Señalamos el nuevo último elemento
+        const filas_flat = Object.values(filas.value.bloques).flat();
+        if (filas_flat.length - nthCount > 0) {
+          filas.value.nthLastElement = filas_flat[filas_flat.length - nthCount];
+        } else {
+          filas.value.nthLastElement = filas_flat[filas_flat.length - 1];
+        }
+        filas.value.lastBlock++;
 
-      // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
-      if (blocksInMemmory < fetchedBlocks.length) {
-        const elementToDelete = fetchedBlocks[0];
-        filas.value.bloques[elementToDelete] = filas.value.bloques[
-          elementToDelete
-        ].map((element) => (element = {}));
-        filas.value.bloqueConData[elementToDelete] = false;
-        filas.value.firstBlock = fetchedBlocks[1];
-        filas.value.nthFirstElement =
-          filas.value.bloques[filas.value.firstBlock][nthCount];
-      } else {
-        filas.value.nthFirstElement = filas_flat[nthCount];
+        // Ahora nos aseguramos que no tenemos más bloques de datos de los que queremos
+        if (blocksInMemmory < fetchedBlocks.length) {
+          const elementToDelete = fetchedBlocks[0];
+          filas.value.bloques[elementToDelete] = filas.value.bloques[
+            elementToDelete
+          ].map((element) => (element = {}));
+          filas.value.bloqueConData[elementToDelete] = false;
+          filas.value.firstBlock = fetchedBlocks[1];
+          filas.value.nthFirstElement =
+            filas.value.bloques[filas.value.firstBlock][nthCount];
+        } else {
+          filas.value.nthFirstElement = filas_flat[nthCount];
+        }
+      } catch (error) {
+        console.log(error);
       }
     }
   };

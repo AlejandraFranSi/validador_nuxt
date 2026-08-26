@@ -192,7 +192,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut partial_bytes = vec![0; 4096];
     let _reading = partial_reader.read(&mut partial_bytes).map_err(|_| "No se pudo leer el archivo.".to_string());
 
-    let file_completo = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo. Intenta de nuevo".to_string()).unwrap();
+    let file_completo = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo.".to_string()).unwrap();
     let file_as_bytes: BufReader<File> = BufReader::new(file_completo);
 
     let mut contenido_final = Vec::new();
@@ -205,7 +205,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         let encoder = detector.guess(None, Utf8Detection::Allow);
         encoding_aplicado = encoder.name().to_string();
         for (indice, linea) in file_as_bytes.split(b'\n').enumerate() {
-            let line = linea.map_err(|_| "Ocurrió un error al iterar sobre las filas. Intentalo de nuevo.".to_string())?;
+            let line = linea.map_err(|_| "Ocurrió un error al iterar sobre las filas.".to_string())?;
             let encoded_line = encoder.decode(&line).0.to_string();
             contenido_final.extend_from_slice(encoded_line.as_bytes());
             contenido_final.extend_from_slice(b"\n");
@@ -219,7 +219,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         }
     } else { 
         for (indice, linea) in file_as_bytes.lines().enumerate() {
-        let line = linea.map_err(|_|"Ocurrió un error al iterar sobre las filas. Intentalo de nuevo.")?;
+        let line = linea.map_err(|_|"Ocurrió un error al iterar sobre las filas.")?;
         contenido_final.extend_from_slice(line.as_bytes());
         contenido_final.extend_from_slice(b"\n");
 
@@ -242,9 +242,12 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut df = CsvReader::new(cursor).with_options(
         CsvReadOptions::default()
             .with_has_header(true)
-        ).finish().map_err(|_| "No se pudo construir el DataFrame. Intentalo de nuevo".to_string())?;
-    let total_filas = df.height();
+        ).finish().map_err(|_| "No se pudo construir el DataFrame".to_string())?;
 
+    let total_filas = df.height();
+    if total_filas == 0{
+       return Err("No se pudo leer correctamente el archivo. Verifica que no tenga columnas sin nombre ni encabezados".to_string())
+    }
     // Ahora vamos a intentar castear las columnas del df
     let nombres: Vec<String> = df
     .get_column_names()
