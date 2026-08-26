@@ -4,7 +4,9 @@ import { useDataStore } from "../../stores/data.js";
 
 const estadoData = useDataStore();
 const esquema = computed(() => estadoData.esquema.esquemaColumnas);
-const columnas = computed(() => estadoData.esquema.columnas);
+const columnas = computed(() =>
+  estadoData.esquema.esquemaColumnas.map((d) => d.nombre),
+);
 const filas = computed(() => estadoData.filas.bloques);
 const filasFlat = computed(() => Object.values(filas.value).flat());
 const nthLastElementClass = computed(

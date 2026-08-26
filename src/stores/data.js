@@ -4,17 +4,18 @@ import { invoke } from "@tauri-apps/api/core";
 
 export const useDataStore = defineStore("data", () => {
   const absolutePath = ref(null);
-  const isDataReady = ref(false);
-  const wasFetchingSuccesfull = ref(null);
-  const fetchingError = ref(null);
   const blocksInMemmory = 3;
   const blockSize = 20;
   const nthCount = 3; // El nthcount debe ser siempre más pequeño que el block size
+  const dataStatus = ref({
+    isLoading: false,
+    wasFetchingSuccesfull: null,
+    fetchingError: null,
+  });
   const esquema = ref({
     infoArchivo: null,
     caracteresCorruptos: null,
     encoding: null,
-    columnas: null,
     esquemaColumnas: null,
     totalFilas: null,
     totalColumnas: null,
@@ -32,14 +33,70 @@ export const useDataStore = defineStore("data", () => {
     absolutePath.value = pathString;
   };
 
+  const resetearStatus = function () {
+    dataStatus.value.isLoading = false;
+    dataStatus.value.wasFetchingSuccesfull = null;
+    dataStatus.value.fetchingError = null;
+  };
+
   const resetearEsquema = function () {
-    esquema.value.infoArchivo = null;
-    esquema.value.caracteresCorruptos = null;
-    esquema.value.encoding = null;
-    esquema.value.columnas = null;
-    esquema.value.esquemaColumnas = null;
-    esquema.value.totalFilas = null;
-    esquema.value.totalColumnas = null;
+    for (let prop in Object.keys(esquema.value)) {
+      esquema.value[prop] = null;
+    }
+  };
+
+  const resetearFilas = function () {
+    filas.value.lastBlock = 1;
+    filas.value.firstBlock = 1;
+    filas.value.nthLastElement = null;
+    filas.value.nthFirstElement = null;
+    filas.value.bloques = {};
+    filas.value.bloqueConData = {};
+  };
+
+  /**
+   * Esta función resetea la información de archivo cada vez que se carga
+   * uno nuevo, actualiza el esquema de los datos y también pide el primer
+   * bloque de filas
+   */
+  const readCSV = async function () {
+    resetearStatus();
+    resetearEsquema();
+    resetearFilas();
+
+    if (!absolutePath.value.toLowerCase().endsWith(".csv")) {
+      dataStatus.value.wasFetchingSuccesfull = false;
+      dataStatus.value.fetchingError = "El archivo debe ser un csv.";
+      return;
+    }
+
+    dataStatus.value.isLoading = true;
+    try {
+      const data_csv = await invoke("leer_csv", {
+        rutaFront: absolutePath.value,
+      });
+      esquema.value = {
+        ...esquema.value,
+        infoArchivo: data_csv.nombre_archivo,
+        encoding: data_csv.encoding_aplicado,
+        caracteresCorruptos: data_csv.caracteres_corruptos,
+        totalFilas: data_csv.total_filas,
+        totalColumnas: data_csv.total_columnas,
+        esquemaColumnas: data_csv.esquema_columnas,
+      };
+      //esquema.value.infoArchivo = data_csv.nombre_archivo;
+      //esquema.value.encoding = data_csv.encoding_aplicado;
+      //esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
+      //esquema.value.totalFilas = data_csv.total_filas;
+      //esquema.value.totalColumnas = esquema.value.columnas.length;
+      //esquema.value.esquemaColumnas = data_csv.esquema_columnas;
+      await fetchNextRows();
+      dataStatus.value.wasFetchingSuccesfull = true;
+    } catch (error) {
+      dataStatus.value.fetchingError = error;
+      dataStatus.value.wasFetchingSuccesfull = false;
+    }
+    dataStatus.value.isLoading = false;
   };
 
   /**
@@ -135,51 +192,12 @@ export const useDataStore = defineStore("data", () => {
       }
     }
   };
-  /**
-   * Esta función resetea la información de archivo cada vez que se carga
-   * uno nuevo, actualiza el esquema de los datos y también pide el primer
-   * bloque de filas
-   */
-  const readCSV = async function () {
-    wasFetchingSuccesfull.value = null;
-    fetchingError.value = null;
-    isDataReady.value = false;
-    filas.value.lastBlock = 1;
-    filas.value.firstBlock = 1;
-    filas.value.nthLastElement = null;
-    filas.value.nthFirstElement = null;
-    filas.value.bloques = {};
-    filas.value.bloqueConData = {};
-    try {
-      const data_csv = await invoke("leer_csv", {
-        rutaFront: absolutePath.value,
-      });
-      console.log(data_csv);
-      esquema.value.infoArchivo = data_csv.nombre_archivo;
-      esquema.value.encoding = data_csv.encoding_aplicado;
-      esquema.value.caracteresCorruptos = data_csv.caracteres_corruptos;
-      esquema.value.totalFilas = data_csv.total_filas;
-      esquema.value.columnas = data_csv.esquema_columnas.map((d) => d.nombre);
-      esquema.value.totalColumnas = esquema.value.columnas.length;
-      esquema.value.esquemaColumnas = data_csv.esquema_columnas;
-      await fetchNextRows();
-      wasFetchingSuccesfull.value = true;
-      isDataReady.value = true;
-    } catch (error) {
-      fetchingError.value = error;
-      wasFetchingSuccesfull.value = false;
-      isDataReady.value = true;
-    }
-  };
 
   return {
     absolutePath,
-    isDataReady,
-    wasFetchingSuccesfull,
-    fetchingError,
+    dataStatus,
     esquema,
     filas,
-    resetearEsquema,
     updatePath,
     readCSV,
     fetchNextRows,

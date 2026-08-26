@@ -54,6 +54,7 @@ pub struct ReporteCsv {
     pub encoding_aplicado: String,
     pub caracteres_corruptos: Vec<CaracterCorrupto>,
     pub total_filas: usize,
+    pub total_columnas: usize,
     pub esquema_columnas: Vec<EsquemaColumna>,
 }
 
@@ -251,6 +252,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     .map(|s| s.to_string())
     .collect();
 
+    let total_columnas = nombres.len();
     for nombre in nombres {
     // clonamos la columna (Column usa Arc internamente, es barato)
         let propiedades = validar_cadena(&nombre);
@@ -292,7 +294,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
     *guardado = Some(df);
 
-    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, esquema_columnas})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas})
 
 }
 
