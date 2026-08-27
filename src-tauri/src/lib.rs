@@ -58,6 +58,8 @@ pub struct ReporteCsv {
     pub esquema_columnas: Vec<EsquemaColumna>,
     pub nombres_columnas_repetidas: bool,
     pub hay_filas_repetidas: bool,
+    //pub line_sep: String,
+    //pub cols_sep: String,
 }
 
 pub struct ContenedorDatos {
@@ -185,12 +187,16 @@ fn castear_columna(cols: Vec<(&str, &str, &str)>){
 #[tauri::command]
 fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     let ruta = ruta_front;
+        let encoded_line_a = "a,b;c,d".to_string();
+    let numero_comas_a = encoded_line_a.chars().filter(|&c| c == ',').count();
+    println!("{}", numero_comas_a); // debería dar 2, no 3
     let directorio: Vec<&str> = ruta.split('\\').collect();
     let nombre = directorio[directorio.len() - 1].replace(".csv", "");
     let nombre_archivo = validar_cadena(&nombre);    
     let file = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
 
     let mut partial_reader = BufReader::new(file);
+
     let mut partial_bytes = vec![0; 4096];
     let _reading = partial_reader.read(&mut partial_bytes).map_err(|_| "No se pudo leer el archivo.".to_string());
 
@@ -201,14 +207,18 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let tuviera_errores = encoding_rs::UTF_8.decode(&partial_bytes).2;
     let mut encoding_aplicado = if tuviera_errores {"".to_string()} else { "UTF-8".to_string()} ;
     let mut mapa_caracteres: BTreeMap<char, BTreeSet<u64>> = BTreeMap::new();
+    let mut numero_comas: Option<usize> = None;
     if tuviera_errores{
         let mut detector = EncodingDetector::new(Iso2022JpDetection::Deny);
         detector.feed(&partial_bytes, true);
         let encoder = detector.guess(None, Utf8Detection::Allow);
         encoding_aplicado = encoder.name().to_string();
         for (indice, linea) in file_as_bytes.split(b'\n').enumerate() {
-            let line = linea.map_err(|_| "Ocurrió un error al iterar sobre las filas.".to_string())?;
+            let line = linea.map_err(|_| "Ocurrió un error al iterar sobre las filas. Confirma que el salto entre líneas sea con espacio.".to_string())?;
             let encoded_line = encoder.decode(&line).0.to_string();
+            if numero_comas.is_none() { 
+                numero_comas = Some(encoded_line.chars().filter(|&c| c == ',').count());
+            }
             contenido_final.extend_from_slice(encoded_line.as_bytes());
             contenido_final.extend_from_slice(b"\n");
 
@@ -222,6 +232,9 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     } else { 
         for (indice, linea) in file_as_bytes.lines().enumerate() {
         let line = linea.map_err(|_|"Ocurrió un error al iterar sobre las filas.")?;
+        if numero_comas.is_none() { 
+            numero_comas = Some(line.chars().filter(|&c| c == ',').count());
+        }
         contenido_final.extend_from_slice(line.as_bytes());
         contenido_final.extend_from_slice(b"\n");
 
@@ -239,15 +252,25 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         filas: filas.into_iter().collect()
     }).collect();
 
-    let cursor = Cursor::new(contenido_final);
+    let cursor = Cursor::new(&contenido_final);
     let mut esquema_columnas: Vec<EsquemaColumna> = Vec::new();  
     let mut df = CsvReader::new(cursor).with_options(
         CsvReadOptions::default()
             .with_has_header(true)
+            //.map_parse_options(|parse_options| parse_options.with_eol_char(b'\r'))
         ).finish().map_err(|_| "No se pudo construir el DataFrame".to_string())?;
 
+
+    if df.height() == 0 {
+        let new_cursor = Cursor::new(&contenido_final);
+        df = CsvReader::new(new_cursor).with_options(
+        CsvReadOptions::default()
+            .with_has_header(true)
+            .map_parse_options(|parse_options| parse_options.with_eol_char(b'\r'))
+        ).finish().map_err(|_| "No se pudo construir el DataFrame".to_string())?;
+    }
     let total_filas = df.height();
-    if total_filas == 0{
+    if total_filas == 0 {
        return Err("No se pudo leer correctamente el archivo. Verifica que no tenga columnas sin nombre ni encabezados".to_string())
     }
 
@@ -265,8 +288,10 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let nombres_repetidos: Vec<&String> =  nombres.iter().filter(|x| x.contains("_duplicated_")).collect();
     let nombres_columnas_repetidas:bool = if nombres_repetidos.iter().len() > 0 { true} else {false};
     let total_columnas = nombres.len();
+    println!("El numero de comas es: {:?}", numero_comas.unwrap());
+    //let coma_es_separador = total_columnas - 1 == numero_comas;
+    //println!("La coma es separador? {coma_es_separador}");
     for nombre in nombres {
-    // clonamos la columna (Column usa Arc internamente, es barato)
         let propiedades = validar_cadena(&nombre);
         let nombre_sugerido = propiedades.sugerido;
         let incidencia: bool = propiedades.incidencia;
