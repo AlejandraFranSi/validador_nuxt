@@ -5,6 +5,9 @@ const estadoData = useDataStore();
 const numFilas = computed(() => estadoData.esquema.totalFilas);
 const numColumnas = computed(() => estadoData.esquema.totalColumnas);
 const encoding = computed(() => estadoData.esquema.encoding);
+const conColumnasRepetidas = computed(
+  () => estadoData.esquema.conNombresColumnasRepetidos,
+);
 const caracteresCorruptos = computed(() =>
   estadoData.esquema.caracteresCorruptos
     .map((d) => d.caracter)
@@ -18,7 +21,8 @@ const conObervaciones = computed(() => {
   if (
     erroresEnNombre.value.length > 0 ||
     caracteresCorruptos.value.length > 0 ||
-    encoding.value !== "UTF-8"
+    encoding.value !== "UTF-8" ||
+    conColumnasRepetidas.value === true
   ) {
     return true;
   } else {
@@ -48,6 +52,9 @@ const conObervaciones = computed(() => {
         >
       </li>
       <li v-else>No se encontraron caracteres corruptos</li>
+      <li v-if="conColumnasRepetidas">
+        Se encontraron columnas con nombres que posiblemente están repetidos.
+      </li>
       <li v-if="erroresEnNombre.length > 0">
         El nombre del archivo no sigue el formato establecido:
         {{ erroresEnNombre }}

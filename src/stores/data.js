@@ -19,6 +19,7 @@ export const useDataStore = defineStore("data", () => {
     esquemaColumnas: null,
     totalFilas: null,
     totalColumnas: null,
+    conNombresColumnasRepetidos: null,
   });
   const filas = ref({
     lastBlock: 1,
@@ -75,6 +76,7 @@ export const useDataStore = defineStore("data", () => {
       const data_csv = await invoke("leer_csv", {
         rutaFront: absolutePath.value,
       });
+      console.log(data_csv);
       esquema.value = {
         infoArchivo: data_csv.nombre_archivo,
         encoding: data_csv.encoding_aplicado,
@@ -82,6 +84,7 @@ export const useDataStore = defineStore("data", () => {
         totalFilas: data_csv.total_filas,
         totalColumnas: data_csv.total_columnas,
         esquemaColumnas: data_csv.esquema_columnas,
+        conNombresColumnasRepetidos: data_csv.nombres_columnas_repetidas,
       };
       await fetchNextRows();
       dataStatus.value.wasFetchingSuccesfull = true;

@@ -56,6 +56,7 @@ pub struct ReporteCsv {
     pub total_filas: usize,
     pub total_columnas: usize,
     pub esquema_columnas: Vec<EsquemaColumna>,
+    pub nombres_columnas_repetidas: bool,
 }
 
 pub struct ContenedorDatos {
@@ -255,6 +256,8 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     .map(|s| s.to_string())
     .collect();
 
+    let nombres_repetidos: Vec<&String> =  nombres.iter().filter(|x| x.contains("_duplicated_")).collect();
+    let nombres_columnas_repetidas:bool = if nombres_repetidos.iter().len() > 0 { true} else {false};
     let total_columnas = nombres.len();
     for nombre in nombres {
     // clonamos la columna (Column usa Arc internamente, es barato)
@@ -297,7 +300,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
     *guardado = Some(df);
 
-    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas})
 
 }
 
