@@ -8,6 +8,7 @@ const encoding = computed(() => estadoData.esquema.encoding);
 const conColumnasRepetidas = computed(
   () => estadoData.esquema.conNombresColumnasRepetidos,
 );
+const conFilasRepetidas = computed(() => estadoData.esquema.hayFilasRepetidas);
 const caracteresCorruptos = computed(() =>
   estadoData.esquema.caracteresCorruptos
     .map((d) => d.caracter)
@@ -22,7 +23,8 @@ const conObervaciones = computed(() => {
     erroresEnNombre.value.length > 0 ||
     caracteresCorruptos.value.length > 0 ||
     encoding.value !== "UTF-8" ||
-    conColumnasRepetidas.value === true
+    conColumnasRepetidas.value === true ||
+    conFilasRepetidas.value === true
   ) {
     return true;
   } else {
@@ -40,7 +42,10 @@ const conObervaciones = computed(() => {
         : 'texto-color-confirmacion fondo-color-confirmacion'
     "
   >
-    <p>Archivo cargado correctamente</p>
+    <h4 v-if="conFilasRepetidas || conColumnasRepetidas" class="m-y-1">
+      Se recomienda revisar el archivo
+    </h4>
+    <h4 v-else class="m-y-1">Archivo cargado correctamente</h4>
     <ul>
       <li>Número de filas: {{ numFilas }}</li>
       <li>Número de columnas: {{ numColumnas }}</li>
@@ -52,14 +57,15 @@ const conObervaciones = computed(() => {
         >
       </li>
       <li v-else>No se encontraron caracteres corruptos</li>
-      <li v-if="conColumnasRepetidas">
-        Se encontraron columnas con nombres que posiblemente están repetidos.
-      </li>
       <li v-if="erroresEnNombre.length > 0">
         El nombre del archivo no sigue el formato establecido:
         {{ erroresEnNombre }}
       </li>
       <li v-else>El nombre del archivo sigue el formato establecido.</li>
+      <li v-if="conColumnasRepetidas">
+        Se encontraron columnas con nombres repetidos.
+      </li>
+      <li v-if="conFilasRepetidas">Se encontraron filas repetidas.</li>
     </ul>
   </div>
 </template>

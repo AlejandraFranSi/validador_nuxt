@@ -57,6 +57,7 @@ pub struct ReporteCsv {
     pub total_columnas: usize,
     pub esquema_columnas: Vec<EsquemaColumna>,
     pub nombres_columnas_repetidas: bool,
+    pub hay_filas_repetidas: bool,
 }
 
 pub struct ContenedorDatos {
@@ -249,6 +250,11 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     if total_filas == 0{
        return Err("No se pudo leer correctamente el archivo. Verifica que no tenga columnas sin nombre ni encabezados".to_string())
     }
+
+    let are_rows_unique = df.is_duplicated().map_err(|_| "No se pudo comparar las filas.".to_string())?;
+    let repeticiones = are_rows_unique.into_series().value_counts(true, true, PlSmallStr::from_str("valores"), true).map_err(|_| "No se pudo comparar las filas.".to_string())?;
+    let hay_filas_repetidas = repeticiones.height() > 1;
+
     // Ahora vamos a intentar castear las columnas del df
     let nombres: Vec<String> = df
     .get_column_names()
@@ -300,7 +306,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
     *guardado = Some(df);
 
-    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas, hay_filas_repetidas})
 
 }
 
