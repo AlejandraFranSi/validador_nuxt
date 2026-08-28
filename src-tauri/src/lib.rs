@@ -1,5 +1,6 @@
 // Import the libraries and functions we'll use
 use chardetng::{EncodingDetector,Iso2022JpDetection, Utf8Detection};
+use encoding_rs::*;
 use polars::prelude::*;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet,};
@@ -59,7 +60,7 @@ pub struct ReporteCsv {
     pub nombres_columnas_repetidas: bool,
     pub hay_filas_repetidas: bool,
     //pub line_sep: String,
-    //pub cols_sep: String,
+    pub sep_by_coma: bool,
 }
 
 pub struct ContenedorDatos {
@@ -187,79 +188,81 @@ fn castear_columna(cols: Vec<(&str, &str, &str)>){
 #[tauri::command]
 fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<ReporteCsv, String>{
     let ruta = ruta_front;
-        let encoded_line_a = "a,b;c,d".to_string();
-    let numero_comas_a = encoded_line_a.chars().filter(|&c| c == ',').count();
-    println!("{}", numero_comas_a); // debería dar 2, no 3
     let directorio: Vec<&str> = ruta.split('\\').collect();
     let nombre = directorio[directorio.len() - 1].replace(".csv", "");
     let nombre_archivo = validar_cadena(&nombre);    
     let file = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo solicitado. Confirma que la ruta exista.".to_string())?;
 
     let mut partial_reader = BufReader::new(file);
-
     let mut partial_bytes = vec![0; 4096];
     let _reading = partial_reader.read(&mut partial_bytes).map_err(|_| "No se pudo leer el archivo.".to_string());
 
-    let file_completo = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo.".to_string()).unwrap();
-    let file_as_bytes: BufReader<File> = BufReader::new(file_completo);
-
-    let mut contenido_final = Vec::new();
     let tuviera_errores = encoding_rs::UTF_8.decode(&partial_bytes).2;
-    let mut encoding_aplicado = if tuviera_errores {"".to_string()} else { "UTF-8".to_string()} ;
-    let mut mapa_caracteres: BTreeMap<char, BTreeSet<u64>> = BTreeMap::new();
-    let mut numero_comas: Option<usize> = None;
-    if tuviera_errores{
+    let encoder = if tuviera_errores {
         let mut detector = EncodingDetector::new(Iso2022JpDetection::Deny);
         detector.feed(&partial_bytes, true);
-        let encoder = detector.guess(None, Utf8Detection::Allow);
-        encoding_aplicado = encoder.name().to_string();
-        for (indice, linea) in file_as_bytes.split(b'\n').enumerate() {
-            let line = linea.map_err(|_| "Ocurrió un error al iterar sobre las filas. Confirma que el salto entre líneas sea con espacio.".to_string())?;
-            let encoded_line = encoder.decode(&line).0.to_string();
-            if numero_comas.is_none() { 
-                numero_comas = Some(encoded_line.chars().filter(|&c| c == ',').count());
-            }
-            contenido_final.extend_from_slice(encoded_line.as_bytes());
-            contenido_final.extend_from_slice(b"\n");
+        detector.guess(None, Utf8Detection::Allow)
+        } else {
+            encoding_rs::UTF_8
+        };
+    let encoding_aplicado = encoder.name().to_string();
+    let mut decoder = encoder.new_decoder(); // Este es el traductor dinámico que en teoría no romperá bytes
 
-            let fila_actual = (indice + 1) as u64;
-            for c in encoded_line.chars() {
-                if es_caracter_corrupto(c) {
-                    mapa_caracteres.entry(c).or_default().insert(fila_actual);
-                }
-            }     
-        }
-    } else { 
-        for (indice, linea) in file_as_bytes.lines().enumerate() {
-        let line = linea.map_err(|_|"Ocurrió un error al iterar sobre las filas.")?;
-        if numero_comas.is_none() { 
-            numero_comas = Some(line.chars().filter(|&c| c == ',').count());
-        }
-        contenido_final.extend_from_slice(line.as_bytes());
-        contenido_final.extend_from_slice(b"\n");
 
+    let file_completo = File::open(&ruta).map_err(|_| "No se pudo abrir el archivo. Intenta de nuevo".to_string()).unwrap();
+    let mut file_as_bytes: BufReader<File> = BufReader::new(file_completo);
+    let mut contenido_final = Vec::new();
+    let mut mapa_caracteres: BTreeMap<char, BTreeSet<u64>> = BTreeMap::new();
+    
+    let mut buffer_intermedio = [0u8; 2048];
+    let mut texto_convertido = String::new();
+    // Pasamos el contenido del archivo al encoding correcto
+    loop {
+        let bytes_leidos = file_as_bytes.read(&mut buffer_intermedio).map_err(|_| "No se pudo iterar sobre el archivo.")?;
+        let capacidad_necesaria = decoder.max_utf8_buffer_length(bytes_leidos).expect("El cálculo de capacidad se desbordó");
+        texto_convertido.reserve(capacidad_necesaria);
+        let es_ultimo_bloque = bytes_leidos == 0;
+        
+        let (_resultado_decode, _consumidos, _hubo_errores) = decoder.decode_to_string(
+            &buffer_intermedio[..bytes_leidos],
+            &mut texto_convertido,
+            es_ultimo_bloque,
+        );
+
+        contenido_final.extend_from_slice(texto_convertido.as_bytes());
+        texto_convertido.clear();
+
+        if es_ultimo_bloque {
+            break;
+        }
+    }
+
+    for (indice, linea) in contenido_final.lines().enumerate() {
+        let line = linea.map_err(|_|"Ocurrió un error al iterar sobre las filas. Intentalo de nuevo.")?;
         let fila_actual = (indice + 1) as u64;
         for c in line.chars() {
                 if es_caracter_corrupto(c) {
                     mapa_caracteres.entry(c).or_default().insert(fila_actual);
                 }
-            }
         }
     }
+
 
     let caracteres_corruptos: Vec<CaracterCorrupto> = mapa_caracteres.into_iter().map(|(caracter,filas)| CaracterCorrupto {
         caracter: caracter.to_string(),
         filas: filas.into_iter().collect()
     }).collect();
 
+    // Construimos el df
     let cursor = Cursor::new(&contenido_final);
     let mut esquema_columnas: Vec<EsquemaColumna> = Vec::new();  
     let mut df = CsvReader::new(cursor).with_options(
         CsvReadOptions::default()
             .with_has_header(true)
-            //.map_parse_options(|parse_options| parse_options.with_eol_char(b'\r'))
+            .map_parse_options(|opts| opts.with_separator(b','))        
         ).finish().map_err(|_| "No se pudo construir el DataFrame".to_string())?;
 
+    let sep_by_coma = !(df.width() <= 1);
 
     if df.height() == 0 {
         let new_cursor = Cursor::new(&contenido_final);
@@ -288,9 +291,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let nombres_repetidos: Vec<&String> =  nombres.iter().filter(|x| x.contains("_duplicated_")).collect();
     let nombres_columnas_repetidas:bool = if nombres_repetidos.iter().len() > 0 { true} else {false};
     let total_columnas = nombres.len();
-    println!("El numero de comas es: {:?}", numero_comas.unwrap());
-    //let coma_es_separador = total_columnas - 1 == numero_comas;
-    //println!("La coma es separador? {coma_es_separador}");
+
     for nombre in nombres {
         let propiedades = validar_cadena(&nombre);
         let nombre_sugerido = propiedades.sugerido;
@@ -303,24 +304,20 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         if parsed_as_datetime.is_ok() {
             let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
             df.replace(&nombre, parsed_column);
-            //println!("{nombre} Es de tipo temporal");
             tipo = "Temporal".to_string();
         } else {
             let parsed_as_float = column.as_materialized_series().f64();
             if parsed_as_float.is_ok(){
                 let parsed_column = parsed_as_float.unwrap().clone().into_column();
                 df.replace(&nombre, parsed_column);
-                //println!("{nombre} Es de tipo numérica");
                 tipo = "Numérica".to_string();
             } else { 
                 let parsed_as_int = column.as_materialized_series().i64();
                 if parsed_as_int.is_ok(){
                     let parsed_column = parsed_as_int.unwrap().clone().into_column();
                     df.replace(&nombre, parsed_column);
-                    //println!("{nombre} Es de tipo numérica");
                     tipo = "Numérica".to_string();
                 } else { 
-                    //println!("{nombre} Es de tipo texto");
                     tipo = "Texto".to_string();
                 }
             }
@@ -331,7 +328,7 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
     *guardado = Some(df);
 
-    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas, hay_filas_repetidas})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas, hay_filas_repetidas, sep_by_coma})
 
 }
 

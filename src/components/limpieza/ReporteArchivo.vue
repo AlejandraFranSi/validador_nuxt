@@ -12,7 +12,7 @@ const conFilasRepetidas = computed(() => estadoData.esquema.hayFilasRepetidas);
 const caracteresCorruptos = computed(() =>
   estadoData.esquema.caracteresCorruptos
     .map((d) => d.caracter)
-    .filter((d) => d === "")
+    .filter((d) => d !== "")
     .join(", "),
 );
 const erroresEnNombre = computed(() =>
