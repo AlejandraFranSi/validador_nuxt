@@ -61,6 +61,7 @@ pub struct ReporteCsv {
     pub hay_filas_repetidas: bool,
     //pub line_sep: String,
     pub sep_by_coma: bool,
+    pub null_rows: usize,
 }
 
 pub struct ContenedorDatos {
@@ -272,14 +273,9 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
             .map_parse_options(|parse_options| parse_options.with_eol_char(b'\r'))
         ).finish().map_err(|_| "No se pudo construir el DataFrame".to_string())?;
     }
-    let total_filas = df.height();
-    if total_filas == 0 {
+    if df.height() == 0 {
        return Err("No se pudo leer correctamente el archivo. Verifica que no tenga columnas sin nombre ni encabezados".to_string())
     }
-
-    let are_rows_unique = df.is_duplicated().map_err(|_| "No se pudo comparar las filas.".to_string())?;
-    let repeticiones = are_rows_unique.into_series().value_counts(true, true, PlSmallStr::from_str("valores"), true).map_err(|_| "No se pudo comparar las filas.".to_string())?;
-    let hay_filas_repetidas = repeticiones.height() > 1;
 
     // Ahora vamos a intentar castear las columnas del df
     let nombres: Vec<String> = df
@@ -288,6 +284,24 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     .map(|s| s.to_string())
     .collect();
 
+    //let df_sin_nulls = df.drop_nulls(Some(&nombres)).map_err(|_| "Fracasó la búsqueda de nulos".to_string())?;
+    let mut df_nulls = df.clone().lazy()
+        .filter(
+            nombres
+                .iter()
+                .map(|c| col(c).is_null())
+                .reduce(|acc, e| acc.and(e))
+                .ok_or_else(|| "La lista de columnas está vacía".to_string())?
+                .not()
+        )
+        .collect()
+        .map_err(|_| "Fracasó la búsqueda de nulos".to_string())?;
+    
+    let total_filas = df_nulls.height();
+    let null_rows = df.height() - df_nulls.height();
+    let are_rows_unique = df_nulls.is_duplicated().map_err(|_| "No se pudo comparar las filas.".to_string())?;
+    let repeticiones = are_rows_unique.into_series().value_counts(true, true, PlSmallStr::from_str("valores"), true).map_err(|_| "No se pudo comparar las filas.".to_string())?;
+    let hay_filas_repetidas = repeticiones.height() > 1;
     let nombres_repetidos: Vec<&String> =  nombres.iter().filter(|x| x.contains("_duplicated_")).collect();
     let nombres_columnas_repetidas:bool = if nombres_repetidos.iter().len() > 0 { true} else {false};
     let total_columnas = nombres.len();
@@ -297,25 +311,25 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
         let nombre_sugerido = propiedades.sugerido;
         let incidencia: bool = propiedades.incidencia;
         let errores: Vec<String> = propiedades.errores;
-        let column = df.column(&nombre).unwrap().clone();
+        let column = df_nulls.column(&nombre).unwrap().clone();
         let mut tipo: String;
 
         let parsed_as_datetime = column.as_materialized_series().date();
         if parsed_as_datetime.is_ok() {
             let parsed_column = column.as_materialized_series().date().unwrap().clone().into_column();
-            df.replace(&nombre, parsed_column);
+            df_nulls.replace(&nombre, parsed_column);
             tipo = "Temporal".to_string();
         } else {
             let parsed_as_float = column.as_materialized_series().f64();
             if parsed_as_float.is_ok(){
                 let parsed_column = parsed_as_float.unwrap().clone().into_column();
-                df.replace(&nombre, parsed_column);
+                df_nulls.replace(&nombre, parsed_column);
                 tipo = "Numérica".to_string();
             } else { 
                 let parsed_as_int = column.as_materialized_series().i64();
                 if parsed_as_int.is_ok(){
                     let parsed_column = parsed_as_int.unwrap().clone().into_column();
-                    df.replace(&nombre, parsed_column);
+                    df_nulls.replace(&nombre, parsed_column);
                     tipo = "Numérica".to_string();
                 } else { 
                     tipo = "Texto".to_string();
@@ -326,9 +340,9 @@ fn leer_csv(ruta_front: String, state: State<'_, ContenedorDatos>) -> Result<Rep
     }
 
     let mut guardado = state.dataframe.lock().map_err(|_| "Error al bloquear el estado")?;
-    *guardado = Some(df);
+    *guardado = Some(df_nulls);
 
-    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas, hay_filas_repetidas, sep_by_coma})
+    Ok(ReporteCsv{nombre_archivo, encoding_aplicado, caracteres_corruptos, total_filas, total_columnas, esquema_columnas, nombres_columnas_repetidas, hay_filas_repetidas, sep_by_coma, null_rows})
 
 }
 

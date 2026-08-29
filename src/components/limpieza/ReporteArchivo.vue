@@ -9,6 +9,8 @@ const conColumnasRepetidas = computed(
   () => estadoData.esquema.conNombresColumnasRepetidos,
 );
 const conFilasRepetidas = computed(() => estadoData.esquema.hayFilasRepetidas);
+const comaEsSeparador = computed(() => estadoData.esquema.sep_coma);
+const filasVacias = computed(() => estadoData.esquema.filas_vacias);
 const caracteresCorruptos = computed(() =>
   estadoData.esquema.caracteresCorruptos
     .map((d) => d.caracter)
@@ -42,7 +44,10 @@ const conObervaciones = computed(() => {
         : 'texto-color-confirmacion fondo-color-confirmacion'
     "
   >
-    <h4 v-if="conFilasRepetidas || conColumnasRepetidas" class="m-y-1">
+    <h4
+      v-if="conFilasRepetidas || conColumnasRepetidas || !comaEsSeparador"
+      class="m-y-1"
+    >
       Se recomienda revisar el archivo
     </h4>
     <h4 v-else class="m-y-1">Archivo cargado correctamente</h4>
@@ -50,6 +55,19 @@ const conObervaciones = computed(() => {
       <li>Número de filas: {{ numFilas }}</li>
       <li>Número de columnas: {{ numColumnas }}</li>
       <li>Encoding: {{ encoding }}</li>
+      <li v-if="conFilasRepetidas">Se encontraron filas repetidas.</li>
+      <li v-if="filasVacias > 0">Se encontraron y eliminaron filas vacías.</li>
+      <li v-if="erroresEnNombre.length > 0">
+        El nombre del archivo no sigue el formato establecido:
+        {{ erroresEnNombre }}
+      </li>
+      <li v-else>El nombre del archivo sigue el formato establecido.</li>
+      <li v-if="conColumnasRepetidas">
+        Se encontraron columnas sin nombre o con nombres repetidos.
+      </li>
+      <li v-if="!comaEsSeparador">
+        El archivo no usa "," como separador de caracteres.
+      </li>
       <li v-if="caracteresCorruptos.length > 0">
         Caracteres corruptos:
         <span class="pictograma-alerta" aria-hidden="true">
@@ -57,15 +75,6 @@ const conObervaciones = computed(() => {
         >
       </li>
       <li v-else>No se encontraron caracteres corruptos</li>
-      <li v-if="erroresEnNombre.length > 0">
-        El nombre del archivo no sigue el formato establecido:
-        {{ erroresEnNombre }}
-      </li>
-      <li v-else>El nombre del archivo sigue el formato establecido.</li>
-      <li v-if="conColumnasRepetidas">
-        Se encontraron columnas con nombres repetidos.
-      </li>
-      <li v-if="conFilasRepetidas">Se encontraron filas repetidas.</li>
     </ul>
   </div>
 </template>

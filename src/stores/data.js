@@ -21,6 +21,8 @@ export const useDataStore = defineStore("data", () => {
     totalColumnas: null,
     conNombresColumnasRepetidos: null,
     hayFilasRepetidas: null,
+    filas_vacias: null,
+    sep_coma: null,
   });
   const filas = ref({
     lastBlock: 1,
@@ -87,6 +89,8 @@ export const useDataStore = defineStore("data", () => {
         esquemaColumnas: data_csv.esquema_columnas,
         conNombresColumnasRepetidos: data_csv.nombres_columnas_repetidas,
         hayFilasRepetidas: data_csv.hay_filas_repetidas,
+        filas_vacias: data_csv.null_rows,
+        sep_coma: data_csv.sep_by_coma,
       };
       await fetchNextRows();
       dataStatus.value.wasFetchingSuccesfull = true;
